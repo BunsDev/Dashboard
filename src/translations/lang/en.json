@@ -139,7 +139,7 @@
     "BETA_ANNOUNCEMENT": "We would love it if you could take a few seconds to [give your honest feedback](https://docs.google.com/forms/d/e/1FAIpQLSeMRfT4iEs4gjvRp194kW4ycKoGRYwwpayFTc_aDXnmTunc5g/viewform) on MyCrypto Beta. This is a beta site, so please practice safe sending.",
     "BROADCAST_TX": "Broadcast Transaction",
     "BROADCAST_TX_BROADCAST_ANOTHER": "Broadcast Another Transaction",
-    "BROADCAST_TX_DESCRIPTION": "Paste a signed transaction and click 'send transaction'",
+    "BROADCAST_TX_DESCRIPTION": "Paste a signed transaction and click 'send transaction'. You will have a chance to confirm the transaction parameters on the next page before sending.",
     "BROADCAST_TX_INPUT_ERROR": "Invalid transaction",
     "BROADCAST_TX_INVALID_CHAIN_ID": "Network with this chain id not supported.",
     "BROADCAST_TX_RECEIPT_TITLE": "Transaction Receipt",
@@ -1032,6 +1032,7 @@
     "NAVIGATION_JOIN": "Join",
     "NAVIGATION_HELP": "Help",
     "NAVIGATION_NEW": "New",
-    "NAVIGATION_MENU": "Menu"
+    "NAVIGATION_MENU": "Menu",
+    "BROADCAST_TX_RAW_TOOLTIP": "This is the decoded values of your signed transaction input."
   }
 }
