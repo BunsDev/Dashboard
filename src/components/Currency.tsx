@@ -1,20 +1,11 @@
 import React from 'react';
 
-import styled from 'styled-components';
-
 import { TCurrencySymbol, TTicker, TUuid } from '@types';
 import { isFiatTicker } from '@utils';
 
 import AssetIcon from './AssetIcon';
-import { default as Typography } from './Typography';
-
-const SContainer = styled('div')`
-  display: inline-flex;
-`;
-
-const SAssetIconContainer = styled('span')`
-  padding-right: 5px;
-`;
+import Box from './Box';
+import { Body } from './NewTypography';
 
 interface Props {
   amount: string;
@@ -25,6 +16,7 @@ interface Props {
   icon?: boolean;
   bold?: boolean;
   fontSize?: string;
+  color?: string;
 }
 
 function Currency({
@@ -36,6 +28,7 @@ function Currency({
   icon = false,
   bold = false,
   fontSize,
+  color,
   ...props
 }: Props) {
   const format = (value: string, decimalPlaces: number) => {
@@ -47,17 +40,13 @@ function Currency({
   };
 
   return (
-    <SContainer {...props}>
-      {icon && uuid && (
-        <SAssetIconContainer>
-          <AssetIcon size={'19px'} uuid={uuid} />
-        </SAssetIconContainer>
-      )}
-      <Typography bold={bold} fontSize={fontSize}>
+    <Box variant="rowAlign" display="inline-flex" style={{ fontSize: fontSize }} {...props}>
+      {icon && uuid && <AssetIcon uuid={uuid} mr="0.5ch" size="1.2em" />}
+      <Body as="span" fontWeight={bold ? 'bold' : 'normal'} fontSize={fontSize} color={color}>
         {format(amount, decimals)}
         {!isFiatTicker(ticker) && ` ${symbol || ticker}`}
-      </Typography>
-    </SContainer>
+      </Body>
+    </Box>
   );
 }
 

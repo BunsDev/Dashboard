@@ -1,11 +1,11 @@
 require('dotenv').config();
 
 const ENV = {
-  // Should be set in order to use Mnemonic in AddAccount flow
+  // Should be set in order to use PrivateKey in AddAccount flow
   E2E_PRIVATE_KEY: process.env.E2E_PRIVATE_KEY,
 
   // Defined in github/workflow to run against mycryptobuilds
-  E2E_BASE_URL: process.env.E2E_BASE_URL || 'https://localhost:3000'
+  E2E_BASE_URL: process.env.E2E_BASE_URL
 };
 
 const ENV_KEYS = Object.keys(ENV);
@@ -71,8 +71,8 @@ const FIXTURE_LOCALSTORAGE_WITH_ONE_ACC = {
           type: 'base',
           isCustom: false,
           uuid: 'ac3478d6-9a3c-51fa-a2e6-0f5c3696165a',
-          balance: { _hex: '0x3e73362871420000' },
-          mtime: 1581530607024
+          balance: '10119688100000000000',
+          mtime: 1614873218615
         }
       ],
       transactions: [],
@@ -84,9 +84,9 @@ const FIXTURE_LOCALSTORAGE_WITH_ONE_ACC = {
   },
   addressBook: {
     'a1acf1f2-0380-5bd6-90c3-2b4a0974a6fe': {
-      label: 'MyCrypto Tip Jar',
+      label: 'MyCrypto Team Tip Jar',
       address: '0x4bbeEB066eD09B7AEd07bF39EEe0460DFa261520',
-      notes: 'Toss us a coin!',
+      notes: "This is MyCrypto's Donate address. Feel free to delete it!",
       network: 'Ethereum',
       uuid: 'a1acf1f2-0380-5bd6-90c3-2b4a0974a6fe'
     },
@@ -99,6 +99,8 @@ const FIXTURE_LOCALSTORAGE_WITH_ONE_ACC = {
     }
   },
   assets: {},
+  rates: {},
+  trackedAssets: {},
   contracts: {},
   networks: {},
   notifications: {
@@ -118,13 +120,13 @@ const FIXTURE_LOCALSTORAGE_WITH_ONE_ACC = {
     }
   },
   settings: {
+    canTrackProductAnalytics: true,
     fiatCurrency: 'USD',
     darkMode: false,
-    dashboardAccounts: ['256b782e-52bc-51f9-a357-602501e59700'],
+    dashboardAccounts: ['1782c060-8bc0-55d6-8078-ff255b4aae90'],
     excludedAssets: [],
-    inactivityTimer: 1800000,
-    rates: {},
-    language: 'en'
+    language: 'en',
+    isDemoMode: false
   },
   password: '',
   networkNodes: {},

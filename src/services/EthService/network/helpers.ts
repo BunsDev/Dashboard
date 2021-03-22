@@ -1,10 +1,15 @@
-import { ethers } from 'ethers';
-import { BaseProvider, FallbackProvider } from 'ethers/providers';
+import {
+  BaseProvider,
+  EtherscanProvider,
+  InfuraProvider,
+  StaticJsonRpcProvider
+} from '@ethersproject/providers';
 import isEmpty from 'lodash/isEmpty';
 import equals from 'ramda/src/equals';
 
 import { ETHERSCAN_API_KEY, INFURA_API_KEY } from '@config';
 import { DPath, DPathFormat, Network, NetworkId, NodeOptions, NodeType } from '@types';
+import { FallbackProvider } from '@vendor';
 
 // Network names accepted by ethers.EtherscanProvider
 type TValidEthersNetworkish = 'homestead' | 'ropsten' | 'rinkeby' | 'kovan' | 'goerli' | number;
@@ -24,29 +29,24 @@ const getProvider = (networkId: NetworkId, node: NodeOptions, chainId: number) =
   const { type, url } = node;
   switch (type) {
     case NodeType.ETHERSCAN: {
-      return new ethers.providers.EtherscanProvider(networkish, ETHERSCAN_API_KEY);
-    }
-    case NodeType.WEB3: {
-      const ethereumProvider = (window as CustomWindow).ethereum;
-      return new ethers.providers.Web3Provider(ethereumProvider, networkish);
+      return new EtherscanProvider(networkish, ETHERSCAN_API_KEY);
     }
     case NodeType.INFURA:
-      return new ethers.providers.InfuraProvider(networkish, INFURA_API_KEY);
-
+      return new InfuraProvider(networkish, INFURA_API_KEY);
     // default case covers the remaining NodeTypes.
     default: {
       if ('auth' in node && node.auth) {
-        return new ethers.providers.JsonRpcProvider(
+        return new StaticJsonRpcProvider(
           {
             url,
             user: node.auth.username,
             password: node.auth.password,
-            allowInsecure: true
+            allowInsecureAuthentication: true
           },
           chainId
         );
       }
-      return new ethers.providers.JsonRpcProvider(url, chainId);
+      return new StaticJsonRpcProvider(url, chainId);
     }
   }
 };
@@ -63,18 +63,21 @@ export const createCustomNodeProvider = (network: Network): BaseProvider => {
 export const createFallbackNetworkProviders = (network: Network): FallbackProvider => {
   const { id, nodes, selectedNode, chainId } = network;
 
-  let sortedNodes = nodes;
+  // Filter out WEB3 nodes always
+  // Filter out nodes disabled by default if needed
+  let sortedNodes = nodes
+    .filter((n) => n.type !== NodeType.WEB3)
+    .filter((n) => !n.disableByDefault || n.name === selectedNode);
   if (!isEmpty(selectedNode)) {
-    const sNode = nodes.find((n) => n.name === selectedNode);
+    const sNode = sortedNodes.find((n) => n.name === selectedNode);
     if (sNode) {
-      const restNodes = nodes.filter((n) => n.name !== selectedNode);
-      sortedNodes = [sNode, ...restNodes];
+      sortedNodes = [sNode];
     }
   }
 
-  const providers: BaseProvider[] = sortedNodes.map((n) => getProvider(id, n as any, chainId));
+  const providers = sortedNodes.map((n) => getProvider(id, n as any, chainId));
 
-  return new ethers.providers.FallbackProvider(providers);
+  return new FallbackProvider(providers);
 };
 
 export const getDPath = (network: Network | undefined, type: DPathFormat): DPath | undefined => {

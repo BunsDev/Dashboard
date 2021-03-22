@@ -26,7 +26,8 @@ export const NODES_CONFIG: { [key in NetworkId]: StaticNodeConfig[] } = {
       name: NetworkUtils.makeNodeName('ETH', 'pocket'),
       type: NodeType.POCKET,
       service: 'Pocket',
-      url: `https://eth-mainnet.gateway.pokt.network/v1/lb/${POCKET_API_KEY}`
+      url: `https://eth-mainnet.gateway.pokt.network/v1/lb/${POCKET_API_KEY}`,
+      disableByDefault: true
     }
   ],
 
@@ -44,7 +45,7 @@ export const NODES_CONFIG: { [key in NetworkId]: StaticNodeConfig[] } = {
       name: NetworkUtils.makeNodeName('Kovan', 'ethscan'),
       type: NodeType.ETHERSCAN,
       service: 'Etherscan',
-      url: 'https://kovan.etherscan.io/api'
+      url: 'https://api-kovan.etherscan.io/api'
     }
   ],
 
@@ -59,7 +60,7 @@ export const NODES_CONFIG: { [key in NetworkId]: StaticNodeConfig[] } = {
       name: NetworkUtils.makeNodeName('Rinkeby', 'ethscan'),
       type: NodeType.ETHERSCAN,
       service: 'Etherscan',
-      url: 'https://rinkeby.etherscan.io/api'
+      url: 'https://api-rinkeby.etherscan.io/api'
     }
   ],
 
@@ -93,15 +94,6 @@ export const NODES_CONFIG: { [key in NetworkId]: StaticNodeConfig[] } = {
       type: NodeType.RPC,
       service: 'mycrypto.rsk.co',
       url: 'https://mycrypto.rsk.co/'
-    }
-  ],
-
-  AKA: [
-    {
-      name: NetworkUtils.makeNodeName('AKA', 'remote.akroma.io'),
-      type: NodeType.RPC,
-      service: 'remote.akroma.io',
-      url: 'https://remote.akroma.io'
     }
   ],
 
@@ -177,15 +169,6 @@ export const NODES_CONFIG: { [key in NetworkId]: StaticNodeConfig[] } = {
     }
   ],
 
-  ESN: [
-    {
-      name: NetworkUtils.makeNodeName('ESN', 'esn'),
-      type: NodeType.RPC,
-      service: 'ethersocial.org',
-      url: 'https://api.esn.gonspool.com'
-    }
-  ],
-
   ETHO: [
     {
       name: NetworkUtils.makeNodeName('ETHO', 'ether1.org'),
@@ -249,19 +232,10 @@ export const NODES_CONFIG: { [key in NetworkId]: StaticNodeConfig[] } = {
     }
   ],
 
-  PIRL: [
-    {
-      name: NetworkUtils.makeNodeName('PIRL', 'wallrpc.pirl.io'),
-      type: NodeType.RPC,
-      service: 'wallrpc.pirl.io',
-      url: 'https://wallrpc.pirl.io'
-    }
-  ],
-
   POA: [
     {
       name: NetworkUtils.makeNodeName('POA', 'core'),
-      type: NodeType.INFURA,
+      type: NodeType.RPC,
       service: 'core.poa.network',
       url: 'https://core.poa.network'
     }
@@ -370,12 +344,73 @@ export const NODES_CONFIG: { [key in NetworkId]: StaticNodeConfig[] } = {
       url: 'https://rpc.energyweb.org'
     }
   ],
-  HARDLYDIFFICULT: [
+  MATIC: [
     {
-      name: NetworkUtils.makeNodeName('HARDLYDIFFICULT', 'ethscan'),
-      type: NodeType.ETHERSCAN,
-      service: 'Etherscan',
-      url: 'https://api.etherscan.io/api'
+      name: NetworkUtils.makeNodeName('MATIC', 'matic'),
+      type: NodeType.RPC,
+      service: 'matic',
+      url: 'https://rpc-mainnet.matic.network'
+    }
+  ],
+  xDAI: [
+    {
+      name: NetworkUtils.makeNodeName('xDAI', 'xdaichain.com'),
+      type: NodeType.RPC,
+      service: 'xdaichain.com',
+      url: 'https://rpc.xdaichain.com/'
+    }
+  ],
+  SmartChain: [
+    {
+      name: NetworkUtils.makeNodeName('SmartChain', 'bsc-dataseed.binance.org'),
+      type: NodeType.RPC,
+      service: 'bsc-dataseed.binance.org',
+      url: 'https://bsc-dataseed.binance.org/'
+    },
+    {
+      name: NetworkUtils.makeNodeName('SmartChain', 'bsc-dataseed1.defibit.io'),
+      type: NodeType.RPC,
+      service: 'bsc-dataseed1.defibit.io',
+      url: 'https://bsc-dataseed1.defibit.io/'
+    },
+    {
+      name: NetworkUtils.makeNodeName('SmartChain', 'bsc-dataseed1.ninicoin.io'),
+      type: NodeType.RPC,
+      service: 'bsc-dataseed1.ninicoin.io',
+      url: 'https://bsc-dataseed1.ninicoin.io/'
+    }
+  ],
+  SmartChainTestNetwork: [
+    {
+      name: NetworkUtils.makeNodeName(
+        'SmartChainTestNetwork',
+        'data-seed-prebsc-1-s3.binance.org:8545'
+      ),
+      type: NodeType.RPC,
+      service: 'data-seed-prebsc-1-s1.binance.org',
+      url: 'https://data-seed-prebsc-1-s1.binance.org:8545/'
+    }
+  ],
+  Avalanche: [
+    {
+      name: NetworkUtils.makeNodeName(
+        'Avalanche',
+        'api.avax.network'
+      ),
+      type: NodeType.RPC,
+      service: 'api.avax.network',
+      url: 'https://api.avax.network/ext/bc/C/rpc'
+    }
+  ],
+  AvalancheTestnet: [
+    {
+      name: NetworkUtils.makeNodeName(
+        'AvalancheTestnet',
+        'api.avax-test.network'
+      ),
+      type: NodeType.RPC,
+      service: 'api.avax-test.network',
+      url: 'https://api.avax-test.network/ext/bc/C/rpc'
     }
   ]
 };

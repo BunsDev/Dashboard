@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { CSSProperties } from 'react';
 
 import styled, { css } from 'styled-components';
 
@@ -8,11 +8,11 @@ import { TCurrencySymbol, TTicker } from '@types';
 import Currency from './Currency';
 import { default as Typography } from './Typography';
 
-const SAmount = styled.div`
+const SAmount = styled.div<{ alignLeft: boolean }>`
   display: flex;
   flex-direction: column;
   justify-content: center;
-  align-items: flex-end;
+  align-items: ${({ alignLeft }) => (alignLeft ? 'flex-start' : 'flex-end')};
   font-size: 16px;
   @media (min-width: ${BREAK_POINTS.SCREEN_XS}) {
     font-size: 18px;
@@ -52,6 +52,8 @@ interface Props {
   baseAssetValue?: string;
   fiatColor?: string;
   bold?: boolean;
+  style?: CSSProperties;
+  alignLeft?: boolean;
 }
 
 // @todo:
@@ -61,10 +63,12 @@ export default function Amount({
   fiat,
   baseAssetValue,
   fiatColor = COLORS.BLUE_GREY,
-  bold = false
+  bold = false,
+  alignLeft = false,
+  ...rest
 }: Props) {
   return (
-    <SAmount>
+    <SAmount alignLeft={alignLeft} {...rest}>
       <Asset bold={bold}>{assetValue}</Asset>
       {baseAssetValue && <Asset $discrete={true}>{baseAssetValue}</Asset>}
       {fiat && (

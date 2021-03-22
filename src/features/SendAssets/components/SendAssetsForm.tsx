@@ -1,11 +1,11 @@
 import React, { useContext, useEffect, useMemo, useState } from 'react';
 
-import { Button } from '@mycrypto/ui';
-import BN from 'bn.js';
-import { bigNumberify } from 'ethers/utils';
+import { BigNumber } from '@ethersproject/bignumber';
+import { Button as UIBtn } from '@mycrypto/ui';
 import { useFormik } from 'formik';
 import isEmpty from 'lodash/isEmpty';
 import mergeDeepWith from 'ramda/src/mergeDeepWith';
+import { connect, ConnectedProps } from 'react-redux';
 import styled from 'styled-components';
 import { ValuesType } from 'utility-types';
 import { number, object, string } from 'yup';
@@ -14,8 +14,10 @@ import {
   AccountSelector,
   AmountInput,
   AssetSelector,
+  Button,
   Checkbox,
   ContactLookupField,
+  DemoGatewayBanner,
   InlineMessage,
   Tooltip,
   WhenQueryExists
@@ -23,12 +25,15 @@ import {
 import TransactionFeeDisplay from '@components/TransactionFlow/displays/TransactionFeeDisplay';
 import {
   DEFAULT_ASSET_DECIMAL,
+  DEFAULT_NETWORK,
   ETHUUID,
   GAS_LIMIT_LOWER_BOUND,
   GAS_LIMIT_UPPER_BOUND,
   GAS_PRICE_GWEI_LOWER_BOUND,
   GAS_PRICE_GWEI_UPPER_BOUND,
-  getWalletConfig
+  getKBHelpArticle,
+  getWalletConfig,
+  KB_HELP_ARTICLE
 } from '@config';
 import { Fiats, getFiat } from '@config/fiats';
 import { checkFormForProtectTxErrors } from '@features/ProtectTransaction';
@@ -52,6 +57,7 @@ import {
   useAssets,
   useSettings
 } from '@services/Store';
+import { AppState, getIsDemoMode } from '@store';
 import translate, { translateRaw } from '@translations';
 import {
   Asset,
@@ -79,18 +85,18 @@ import {
   formatSupportEmail,
   fromTokenBase,
   gasStringsToMaxGasBN,
-  hexToNumber,
   isSameAddress,
   isVoid,
   sortByLabel,
   toTokenBase
 } from '@utils';
-import { path } from '@vendor';
+import { path, useDebounce } from '@vendor';
 
 import { isERC20Asset, processFormForEstimateGas } from '../helpers';
 import { DataField, GasLimitField, GasPriceField, GasPriceSlider, NonceField } from './fields';
 import './SendAssetsForm.scss';
 import {
+  canAffordTX,
   validateAmountField,
   validateDataField,
   validateGasLimitField,
@@ -98,7 +104,7 @@ import {
   validateNonceField
 } from './validators';
 
-export const AdvancedOptionsButton = styled(Button)`
+export const AdvancedOptionsButton = styled(UIBtn)`
   width: 100%;
   color: #1eb8e7;
   text-align: center;
@@ -124,32 +130,40 @@ const getTxFeeValidation = ({
       return (
         <InlineMessage
           type={InlineMessageType.WARNING}
-          value={translateRaw('WARNING_TRANSACTION_FEE', {
+          value={translate('WARNING_TRANSACTION_FEE', {
             $amount: `${fiat.symbol}${amount}`,
-            $fee: `${fiat.symbol}${fee}`
+            $fee: `${fiat.symbol}${fee}`,
+            $link: getKBHelpArticle(KB_HELP_ARTICLE.WHY_IS_GAS)
           })}
         />
       );
-    case 'Error-Use-Lower':
+    case 'Warning-Use-Lower':
       return (
         <InlineMessage
-          type={InlineMessageType.ERROR}
-          value={translateRaw('ERROR_TRANSACTION_FEE_USE_LOWER', { $fee: `${fiat.symbol}${fee}` })}
+          type={InlineMessageType.WARNING}
+          value={translate('TRANSACTION_FEE_NOTICE', {
+            $fee: `${fiat.symbol}${fee}`,
+            $link: getKBHelpArticle(KB_HELP_ARTICLE.WHY_IS_GAS)
+          })}
         />
       );
     case 'Error-High-Tx-Fee':
       return (
         <InlineMessage
           type={InlineMessageType.ERROR}
-          value={translateRaw('ERROR_HIGH_TRANSACTION_FEE_HIGH', { $fee: `${fiat.symbol}${fee}` })}
+          value={translate('ERROR_HIGH_TRANSACTION_FEE_HIGH', {
+            $fee: `${fiat.symbol}${fee}`,
+            $link: getKBHelpArticle(KB_HELP_ARTICLE.WHY_IS_GAS)
+          })}
         />
       );
     case 'Error-Very-High-Tx-Fee':
       return (
         <InlineMessage
           type={InlineMessageType.ERROR}
-          value={translateRaw('ERROR_HIGH_TRANSACTION_FEE_VERY_HIGH', {
-            $fee: `${fiat.symbol}${fee}`
+          value={translate('ERROR_HIGH_TRANSACTION_FEE_VERY_HIGH', {
+            $fee: `${fiat.symbol}${fee}`,
+            $link: getKBHelpArticle(KB_HELP_ARTICLE.WHY_IS_GAS)
           })}
         />
       );
@@ -198,7 +212,7 @@ const getInitialFormikValues = ({
   defaultNetwork
 }: {
   s: ITxConfig;
-  defaultAccount: StoreAccount;
+  defaultAccount: StoreAccount | undefined;
   defaultAsset: Asset | undefined;
   defaultNetwork: Network | undefined;
 }): IFormikFields => {
@@ -213,9 +227,9 @@ const getInitialFormikValues = ({
     nonceField: s.nonce,
     txDataField: s.data,
     address: { value: s.receiverAddress, display: s.receiverAddress },
-    gasLimitField: s.gasLimit && hexToNumber(s.gasLimit).toString(),
-    gasPriceSlider: gasPriceInGwei,
-    gasPriceField: gasPriceInGwei
+    gasLimitField: s.gasLimit && bigify(s.gasLimit).toString(),
+    gasPriceSlider: gasPriceInGwei as string,
+    gasPriceField: gasPriceInGwei as string
   };
 
   const preferValueFromState = (l: FieldValue, r: FieldValue): FieldValue => (isEmpty(r) ? l : r);
@@ -235,14 +249,10 @@ interface ISendFormProps extends IStepComponentProps {
   protectTxButton?(): JSX.Element;
 }
 
-const SendAssetsForm = ({ txConfig, onComplete, protectTxButton }: ISendFormProps) => {
-  const {
-    accounts,
-    userAssets,
-    networks,
-    getAccount,
-    defaultAccount: storeDefaultAccount
-  } = useContext(StoreContext);
+const SendAssetsForm = ({ txConfig, onComplete, protectTxButton, isDemoMode }: Props) => {
+  const { accounts, userAssets, networks, getDefaultAccount: getDefaultStoreAccount } = useContext(
+    StoreContext
+  );
   const { getAssetRate, getAssetRateInCurrency } = useRates();
   const { getAssetByUUID, assets } = useAssets();
   const { settings } = useSettings();
@@ -262,11 +272,16 @@ const SendAssetsForm = ({ txConfig, onComplete, protectTxButton }: ISendFormProp
     } else if (userAssets.length > 0) {
       return userAssets[0];
     }
-    return undefined;
+    return EthAsset;
   })();
 
   const getDefaultAccount = (asset?: Asset) => {
-    if (asset !== undefined && !storeDefaultAccount.assets.some((a) => a.uuid === asset.uuid)) {
+    const storeDefaultAccount = getDefaultStoreAccount(false, asset?.networkId);
+    if (
+      storeDefaultAccount !== undefined &&
+      asset !== undefined &&
+      !storeDefaultAccount.assets.some((a) => a.uuid === asset.uuid)
+    ) {
       const accountsWithDefaultAsset = validAccounts.filter((account) =>
         account.assets.some((a) => a.uuid === asset.uuid)
       );
@@ -276,8 +291,8 @@ const SendAssetsForm = ({ txConfig, onComplete, protectTxButton }: ISendFormProp
     }
     return storeDefaultAccount;
   };
-  const getDefaultNetwork = (account: StoreAccount) =>
-    networks.find((n) => n.id === account.networkId);
+  const getDefaultNetwork = (account?: StoreAccount) =>
+    networks.find((n) => n.id === (account !== undefined ? account.networkId : DEFAULT_NETWORK));
 
   const defaultAccount = getDefaultAccount(defaultAsset);
   const defaultNetwork = getDefaultNetwork(defaultAccount);
@@ -307,7 +322,7 @@ const SendAssetsForm = ({ txConfig, onComplete, protectTxButton }: ISendFormProp
             const asset = this.parent.asset;
             if (!isEmpty(account)) {
               const balance = getAccountBalance(account, asset.type === 'base' ? undefined : asset);
-              const amount = bigNumberify(toTokenBase(value, asset.decimal).toString());
+              const amount = BigNumber.from(toTokenBase(value, asset.decimal).toString());
               if (balance.lt(amount)) {
                 return this.createError({
                   message: translateRaw('BALANCE_TOO_LOW_ERROR', {
@@ -375,7 +390,7 @@ const SendAssetsForm = ({ txConfig, onComplete, protectTxButton }: ISendFormProp
       .typeError(translateRaw('ERROR_8'))
       .test(validateGasLimitField()),
     gasPriceField: number()
-      .min(GAS_PRICE_GWEI_LOWER_BOUND, translateRaw('ERROR_10'))
+      .min(GAS_PRICE_GWEI_LOWER_BOUND, translateRaw('LOW_GAS_PRICE_WARNING'))
       .max(GAS_PRICE_GWEI_UPPER_BOUND, translateRaw('ERROR_10'))
       .required(translateRaw('REQUIRED'))
       .typeError(translateRaw('GASPRICE_ERROR'))
@@ -438,9 +453,13 @@ const SendAssetsForm = ({ txConfig, onComplete, protectTxButton }: ISendFormProp
     handleNonceEstimate(values.account);
   }, [values.account]);
 
-  useEffect(() => {
-    handleGasEstimate();
-  }, [values.account, values.address]);
+  useDebounce(
+    () => {
+      handleGasEstimate();
+    },
+    500,
+    [values.account, values.address, values.amount]
+  );
 
   useEffect(() => {
     const asset = values.asset;
@@ -498,11 +517,10 @@ const SendAssetsForm = ({ txConfig, onComplete, protectTxButton }: ISendFormProp
       const finalTx = processFormForEstimateGas(values);
       try {
         const gas = await getGasEstimate(values.network, finalTx);
-        setFieldValue('gasLimitField', hexToNumber(gas).toString());
+        setFieldValue('gasLimitField', gas);
         setGasEstimationError(undefined);
-        setFieldTouched('amount');
       } catch (err) {
-        setGasEstimationError(err.message);
+        setGasEstimationError(err.reason ? err.reason : err.message);
       }
       setIsEstimatingGasLimit(false);
     } else {
@@ -511,22 +529,20 @@ const SendAssetsForm = ({ txConfig, onComplete, protectTxButton }: ISendFormProp
   };
 
   const setAmountFieldToAssetMax = () => {
-    const account = getAccount(values.account);
-    if (values.asset && account && baseAsset) {
-      const accountBalance = getAccountBalance(account, values.asset).toString();
+    if (values.asset && values.account && baseAsset) {
+      const accountBalance = getAccountBalance(values.account, values.asset);
       const isERC20 = isERC20Asset(values.asset);
-      const balance = fromTokenBase(new BN(accountBalance), values.asset.decimal);
+      const balance = fromTokenBase(bigify(accountBalance), values.asset.decimal);
       const gasPrice = values.advancedTransaction ? values.gasPriceField : values.gasPriceSlider;
       const amount = isERC20 // subtract gas cost from balance when sending a base asset
         ? balance
         : baseToConvertedUnit(
-            new BN(convertedToBaseUnit(balance.toString(), DEFAULT_ASSET_DECIMAL))
-              .sub(gasStringsToMaxGasBN(gasPrice, values.gasLimitField))
+            bigify(convertedToBaseUnit(balance.toString(), DEFAULT_ASSET_DECIMAL))
+              .minus(gasStringsToMaxGasBN(gasPrice, values.gasLimitField))
               .toString(),
             DEFAULT_ASSET_DECIMAL
           );
       setFieldValue('amount', amount);
-      handleGasEstimate();
     }
   };
 
@@ -543,8 +559,11 @@ const SendAssetsForm = ({ txConfig, onComplete, protectTxButton }: ISendFormProp
 
   const accountsWithAsset = getAccountsByAsset(validAccounts, values.asset);
 
-  const isFormValid = checkFormValid(errors) && !gasEstimationError;
-  const walletConfig = getWalletConfig(values.account.wallet);
+  const userCanAffordTX = canAffordTX(baseAsset, values);
+  const formHasErrors = !checkFormValid(errors);
+
+  const isFormValid = !formHasErrors && !gasEstimationError && userCanAffordTX;
+  const walletConfig = getWalletConfig(values.account.wallet || WalletId.WEB3);
   const supportsNonce = walletConfig.flags.supportsNonce;
 
   const { type, amount, fee } = validateTxFee(
@@ -560,6 +579,7 @@ const SendAssetsForm = ({ txConfig, onComplete, protectTxButton }: ISendFormProp
   return (
     <div className="SendAssetsForm">
       <QueryWarning />
+      {isDemoMode && <DemoGatewayBanner />}
       {/* Asset */}
       <fieldset className="SendAssetsForm-fieldset">
         <label htmlFor="asset" className="input-group-header">
@@ -568,6 +588,8 @@ const SendAssetsForm = ({ txConfig, onComplete, protectTxButton }: ISendFormProp
         <AssetSelector
           selectedAsset={values.asset}
           assets={userAssets}
+          searchable={true}
+          showAssetName={true}
           onSelect={(option: StoreAsset) => {
             setFieldValue('asset', option || {}); //if this gets deleted, it no longer shows as selected on interface (find way to not need this)
           }}
@@ -625,7 +647,6 @@ const SendAssetsForm = ({ txConfig, onComplete, protectTxButton }: ISendFormProp
             value={values.amount}
             onBlur={() => {
               setFieldTouched('amount');
-              handleGasEstimate();
             }}
             placeholder={'0.00'}
           />
@@ -772,7 +793,9 @@ const SendAssetsForm = ({ txConfig, onComplete, protectTxButton }: ISendFormProp
             onComplete(values);
           }
         }}
-        disabled={isEstimatingGasLimit || isResolvingName || isEstimatingNonce || !isFormValid}
+        disabled={
+          isDemoMode || isEstimatingGasLimit || isResolvingName || isEstimatingNonce || !isFormValid
+        }
         className="SendAssetsForm-next"
       >
         {translate('ACTION_6')}
@@ -782,6 +805,9 @@ const SendAssetsForm = ({ txConfig, onComplete, protectTxButton }: ISendFormProp
           value={translate('GAS_LIMIT_ESTIMATION_ERROR_MESSAGE', { $error: gasEstimationError })}
         />
       )}
+      {!formHasErrors && !gasEstimationError && !userCanAffordTX && (
+        <InlineMessage value={translate('NOT_ENOUGH_GAS', { $baseAsset: baseAsset.ticker })} />
+      )}
       {protectTxFeatureFlag && (
         <ProtectTxShowError
           protectTxError={checkFormForProtectTxErrors(
@@ -789,11 +815,18 @@ const SendAssetsForm = ({ txConfig, onComplete, protectTxButton }: ISendFormProp
             getAssetRate(values.asset),
             ptxState.isPTXFree
           )}
-          shown={!(isEstimatingGasLimit || isResolvingName || isEstimatingNonce || !isFormValid)}
+          shown={isFormValid}
         />
       )}
     </div>
   );
 };
 
-export default SendAssetsForm;
+const mapStateToProps = (state: AppState) => ({
+  isDemoMode: getIsDemoMode(state)
+});
+
+const connector = connect(mapStateToProps);
+type Props = ConnectedProps<typeof connector> & ISendFormProps;
+
+export default connector(SendAssetsForm);

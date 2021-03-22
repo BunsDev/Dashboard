@@ -2,16 +2,19 @@ import React, { useState } from 'react';
 
 import { Button as ButtonUI } from '@mycrypto/ui';
 import { toChecksumAddress } from 'ethereumjs-util';
+import { connect, ConnectedProps } from 'react-redux';
 import styled from 'styled-components';
 
 import backArrowIcon from '@assets/images/icn-back-arrow.svg';
-import { Button, CodeBlock, InputField, WalletList } from '@components';
+import { Button, CodeBlock, DemoGatewayBanner, InputField, WalletList } from '@components';
 import { DEFAULT_NETWORK, WALLETS_CONFIG } from '@config';
-import { setupWeb3Node } from '@services/EthService';
-import { IFullWallet, IUseWalletConnect, withWalletConnect } from '@services/WalletService';
+import { setupWeb3Node, Web3Node } from '@services/EthService';
+import { IFullWallet } from '@services/WalletService';
+import { AppState, getIsDemoMode } from '@store';
 import { BREAK_POINTS } from '@theme';
 import translate, { translateRaw } from '@translations';
-import { FormData, INode, ISignedMessage, WalletId } from '@types';
+import { FormData, ISignedMessage, WalletId } from '@types';
+import { addHexPrefix, isWeb3Wallet } from '@utils';
 
 import { getStories } from './stories';
 
@@ -81,8 +84,7 @@ enum SignStatus {
   SIGNED
 }
 
-interface Props {
-  useWalletConnectProps: IUseWalletConnect;
+interface SignProps {
   setShowSubtitle(show: boolean): void;
 }
 
@@ -94,7 +96,7 @@ function SignMessage(props: Props) {
   const [error, setError] = useState<string | undefined>(undefined);
   const [signedMessage, setSignedMessage] = useState<ISignedMessage | null>(null);
 
-  const { setShowSubtitle, useWalletConnectProps } = props;
+  const { setShowSubtitle, isDemoMode } = props;
 
   const handleSignMessage = async () => {
     setSignStatus(SignStatus.SIGNING);
@@ -106,8 +108,8 @@ function SignMessage(props: Props) {
       const address = toChecksumAddress(wallet.getAddressString());
       let sig = '';
 
-      let lib: INode = {} as INode;
-      if (walletName === WalletId.METAMASK) {
+      let lib: Web3Node | undefined = undefined;
+      if (walletName && isWeb3Wallet(walletName)) {
         lib = (await setupWeb3Node()).lib;
       }
       sig = await wallet.signMessage(message, lib);
@@ -115,7 +117,7 @@ function SignMessage(props: Props) {
       const combined = {
         address,
         msg: message,
-        sig,
+        sig: addHexPrefix(sig),
         version: '2'
       };
       setError(undefined);
@@ -157,6 +159,7 @@ function SignMessage(props: Props) {
 
   return (
     <Content>
+      {isDemoMode && <DemoGatewayBanner />}
       {walletName ? (
         <>
           <BackButton marginBottom={!!wallet} basic={true} onClick={resetWalletSelectionAndForm}>
@@ -168,7 +171,6 @@ function SignMessage(props: Props) {
               wallet={WALLETS_CONFIG[walletName]}
               onUnlock={onUnlock}
               formData={defaultFormData}
-              useWalletConnectProps={useWalletConnectProps}
             />
           )}
         </>
@@ -188,7 +190,7 @@ function SignMessage(props: Props) {
             inputError={error}
           />
           <SignButton
-            disabled={!message}
+            disabled={!message || isDemoMode}
             onClick={handleSignMessage}
             loading={signStatus === SignStatus.SIGNING}
           >
@@ -208,4 +210,11 @@ function SignMessage(props: Props) {
   );
 }
 
-export default withWalletConnect(SignMessage);
+const mapStateToProps = (state: AppState) => ({
+  isDemoMode: getIsDemoMode(state)
+});
+
+const connector = connect(mapStateToProps);
+type Props = ConnectedProps<typeof connector> & SignProps;
+
+export default connector(SignMessage);

@@ -1,12 +1,15 @@
-import { useContext, useState } from 'react';
+import { useState } from 'react';
 
 import isEmpty from 'lodash/isEmpty';
 
+import { STATIC_CONTACTS } from '@config';
 import {
   createContact as createAContact,
   destroyContact,
+  selectContacts,
   updateContact as updateAContact,
-  useDispatch
+  useDispatch,
+  useSelector
 } from '@store';
 import {
   Contact,
@@ -20,7 +23,6 @@ import {
 import { generateDeterministicAddressUUID, isSameAddress } from '@utils';
 
 import { useContracts } from '../Contract';
-import { DataContext } from '../DataManager';
 
 export interface IAddressBookContext {
   contacts: ExtendedContact[];
@@ -39,7 +41,7 @@ export interface IAddressBookContext {
 }
 
 function useContacts() {
-  const { addressBook: contacts } = useContext(DataContext);
+  const contacts = useSelector(selectContacts);
   const { getContractByAddress } = useContracts();
   const dispatch = useDispatch();
   const [contactRestore, setContactRestore] = useState<{
@@ -79,7 +81,7 @@ function useContacts() {
 
   const getContactByAddress = (address: TAddress) => {
     return (
-      contacts.find((contact: ExtendedContact) =>
+      [...contacts, ...STATIC_CONTACTS].find((contact: ExtendedContact) =>
         isSameAddress(contact.address as TAddress, address)
       ) || getContactFromContracts(address)
     );
@@ -87,7 +89,7 @@ function useContacts() {
 
   const getContactByAddressAndNetworkId = (address: TAddress, networkId: NetworkId) => {
     return (
-      contacts
+      [...contacts, ...STATIC_CONTACTS]
         .filter((contact: ExtendedContact) => contact.network === networkId)
         .find((contact: ExtendedContact) => isSameAddress(contact.address as TAddress, address)) ||
       getContactFromContracts(address)

@@ -1,4 +1,4 @@
-import { BigNumber } from 'ethers/utils';
+import { BigNumber } from '@ethersproject/bignumber';
 
 import { donationAddressMap } from '@config';
 import {
@@ -35,6 +35,7 @@ import {
 } from '@types';
 
 import {
+  appendGasLimit,
   appendGasPrice,
   appendNonce,
   appendSender,
@@ -50,11 +51,13 @@ import {
 } from './transaction';
 
 jest.mock('@services/ApiService/Gas', () => ({
-  fetchGasPriceEstimates: () => new Promise((resolve, _) => resolve({ fast: 20 }))
+  ...jest.requireActual('@services/ApiService/Gas'),
+  fetchGasPriceEstimates: () => Promise.resolve({ fast: 20 }),
+  getGasEstimate: () => Promise.resolve(21000)
 }));
 
 jest.mock('@services/EthService/nonce', () => ({
-  getNonce: () => new Promise((resolve, _) => resolve(1))
+  getNonce: () => Promise.resolve(1)
 }));
 
 const senderAddr = donationAddressMap.ETH as TAddress;
@@ -317,6 +320,49 @@ describe('appendSender', () => {
   });
 });
 
+describe('appendGasLimit', () => {
+  it('appends gas limit to transaction input', async () => {
+    const input = {
+      to: senderAddr,
+      value: '0x0' as ITxValue,
+      data: '0x0' as ITxData,
+      chainId: 1,
+      gasPrice: '0x4a817c800' as ITxGasPrice
+    };
+    const actual = await appendGasLimit(fNetworks[0])(input);
+    const expected = {
+      to: senderAddr,
+      value: '0x0',
+      data: '0x0',
+      chainId: 1,
+      gasLimit: '0x6270',
+      gasPrice: '0x4a817c800'
+    };
+    expect(actual).toStrictEqual(expected);
+  });
+
+  it('respects gas limit if present', async () => {
+    const input = {
+      to: senderAddr,
+      value: '0x0' as ITxValue,
+      data: '0x0' as ITxData,
+      chainId: 1,
+      gasPrice: '0x4a817c800' as ITxGasPrice,
+      gasLimit: '0x5208' as ITxGasLimit
+    };
+    const actual = await appendGasLimit(fNetworks[0])(input);
+    const expected = {
+      to: senderAddr,
+      value: '0x0',
+      data: '0x0',
+      chainId: 1,
+      gasLimit: '0x5208',
+      gasPrice: '0x4a817c800'
+    };
+    expect(actual).toStrictEqual(expected);
+  });
+});
+
 describe('appendGasPrice', () => {
   it('appends gas price to transaction input', async () => {
     const input = {
@@ -332,6 +378,25 @@ describe('appendGasPrice', () => {
       data: '0x0',
       chainId: 1,
       gasPrice: '0x4a817c800'
+    };
+    expect(actual).toStrictEqual(expected);
+  });
+
+  it('respects gas price if present', async () => {
+    const input = {
+      to: senderAddr,
+      value: '0x0' as ITxValue,
+      data: '0x0' as ITxData,
+      gasPrice: '0x2540be400' as ITxGasPrice,
+      chainId: 1
+    };
+    const actual = await appendGasPrice(fNetworks[0])(input);
+    const expected = {
+      to: senderAddr,
+      value: '0x0',
+      data: '0x0',
+      chainId: 1,
+      gasPrice: '0x2540be400'
     };
     expect(actual).toStrictEqual(expected);
   });
@@ -368,11 +433,11 @@ describe('verifyTransaction', () => {
     expect(
       verifyTransaction({
         to: '0x4bbeEB066eD09B7AEd07bF39EEe0460DFa261520',
-        value: new BigNumber('0x0'),
+        value: BigNumber.from('0x0'),
         data: '0x',
         chainId: 1,
-        gasLimit: new BigNumber('0x5208'),
-        gasPrice: new BigNumber('0x1'),
+        gasLimit: BigNumber.from('0x5208'),
+        gasPrice: BigNumber.from('0x1'),
         nonce: 1,
         r: '0x7e833413ead52b8c538001b12ab5a85bac88db0b34b61251bb0fc81573ca093f',
         s: '0x49634f1e439e3760265888434a2f9782928362412030db1429458ddc9dcee995',
@@ -385,11 +450,11 @@ describe('verifyTransaction', () => {
     expect(
       verifyTransaction({
         to: '0x4bbeEB066eD09B7AEd07bF39EEe0460DFa261520',
-        value: new BigNumber('0x0'),
+        value: BigNumber.from('0x0'),
         data: '0x',
         chainId: 1,
-        gasLimit: new BigNumber('0x5208'),
-        gasPrice: new BigNumber('0x1'),
+        gasLimit: BigNumber.from('0x5208'),
+        gasPrice: BigNumber.from('0x1'),
         nonce: 1,
         r: '0x7e833413ead52b8c538001b12ab5a85bac88db0b34b61251bb0fc81573ca093f',
         s: '0x7fffffffffffffffffffffffffffffff5d576e7357a4501ddfe92f46681b20a1',
@@ -402,11 +467,11 @@ describe('verifyTransaction', () => {
     expect(
       verifyTransaction({
         to: '0x4bbeEB066eD09B7AEd07bF39EEe0460DFa261520',
-        value: new BigNumber('0x0'),
+        value: BigNumber.from('0x0'),
         data: '0x',
         chainId: 1,
-        gasLimit: new BigNumber('0x5208'),
-        gasPrice: new BigNumber('0x1'),
+        gasLimit: BigNumber.from('0x5208'),
+        gasPrice: BigNumber.from('0x1'),
         nonce: 1,
         r: '0x7e833413ead52b8c538001b12ab5a85bac88db0b34b61251bb0fc81573ca093f',
         s: '0x7fffffffffffffffffffffffffffffff5d576e7357a4501ddfe92f46681b20a1',
@@ -419,11 +484,11 @@ describe('verifyTransaction', () => {
     expect(
       verifyTransaction({
         to: '0x4bbeEB066eD09B7AEd07bF39EEe0460DFa261520',
-        value: new BigNumber('0x0'),
+        value: BigNumber.from('0x0'),
         data: '0x',
         chainId: 1,
-        gasLimit: new BigNumber('0x5208'),
-        gasPrice: new BigNumber('0x1'),
+        gasLimit: BigNumber.from('0x5208'),
+        gasPrice: BigNumber.from('0x1'),
         nonce: 1,
         r: '0x12345',
         s: '0x12345',
@@ -436,11 +501,11 @@ describe('verifyTransaction', () => {
     expect(
       verifyTransaction({
         to: '0x4bbeEB066eD09B7AEd07bF39EEe0460DFa261520',
-        value: new BigNumber('0x0'),
+        value: BigNumber.from('0x0'),
         data: '0x',
         chainId: 1,
-        gasLimit: new BigNumber('0x5208'),
-        gasPrice: new BigNumber('0x1'),
+        gasLimit: BigNumber.from('0x5208'),
+        gasPrice: BigNumber.from('0x1'),
         nonce: 1
       })
     ).toBe(false);

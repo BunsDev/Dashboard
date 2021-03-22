@@ -1,6 +1,6 @@
 import TrezorConnect from 'trezor-connect';
 
-import { DPathsList, TREZOR_DERIVATION_PATHS } from '@config/dpaths';
+import { TREZOR_DERIVATION_PATHS } from '@config/dpaths';
 import { DPath, WalletId } from '@types';
 
 import HardwareWallet, { KeyInfo } from './HardwareWallet';
@@ -9,7 +9,7 @@ import { getFullPath } from './helpers';
 export default class Trezor extends HardwareWallet {
   private cache: { [key: string]: KeyInfo } = {};
 
-  public async initialize(): Promise<void> {
+  public async initialize(dpath: DPath): Promise<void> {
     TrezorConnect.manifest({
       email: 'support@mycrypto.com',
       appUrl: 'https://beta.mycrypto.com'
@@ -18,7 +18,12 @@ export default class Trezor extends HardwareWallet {
     this.cache = {};
 
     // Fetch a random address to ensure the connection works
-    await this.getAddress(DPathsList.ETH_DEFAULT, 50);
+    try {
+      await this.getAddress(dpath, 50);
+    } catch (err) {
+      console.debug('[Trezor]: Error connecting to device');
+      throw err;
+    }
   }
 
   public async prefetch(paths: DPath[]): Promise<{ [key: string]: KeyInfo }> {
@@ -48,6 +53,10 @@ export default class Trezor extends HardwareWallet {
 
     const response = await TrezorConnect.getPublicKey({ path: path.value });
 
+    if (!response.success) {
+      throw Error(response.payload.error);
+    }
+
     return {
       publicKey: response.payload.publicKey,
       chainCode: response.payload.chainCode
@@ -60,6 +69,10 @@ export default class Trezor extends HardwareWallet {
      * https://github.com/trezor/connect/blob/develop/docs/methods/ethereumGetAddress.md
      */
     const response = await TrezorConnect.ethereumGetAddress({ path: getFullPath(path, index) });
+
+    if (!response.success) {
+      throw Error(response.payload.error);
+    }
 
     return response.payload.address;
   }

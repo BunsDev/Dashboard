@@ -12,10 +12,10 @@ import {
 } from '@utils';
 import { eqBy, identity, mergeAll, prop, unionWith } from '@vendor';
 
-import { getAllTokensBalancesOfAccounts, getBaseAssetBalances } from '../BalanceService';
+import { getBaseAssetBalancesForAddresses, getTokenBalancesForAddresses } from '../BalanceService';
 import { getAccounts, updateAccountAssets } from './account.slice';
 import { getAssets } from './asset.slice';
-import { getNetworks } from './network.slice';
+import { selectNetworks } from './network.slice';
 import { AppState } from './root.reducer';
 
 export const initialState = {
@@ -65,8 +65,8 @@ const fetchBalances = async (networks: Network[], accounts: IAccount[], assets: 
     if (addresses.length === 0) {
       return null;
     }
-    const tokenBalances = await getAllTokensBalancesOfAccounts(network, addresses, assets);
-    const baseAssetBalances = await getBaseAssetBalances(addresses, network);
+    const tokenBalances = await getTokenBalancesForAddresses(assets, network, addresses);
+    const baseAssetBalances = await getBaseAssetBalancesForAddresses(addresses, network);
     return { network, tokenBalances, baseAssetBalances };
   });
 };
@@ -141,7 +141,7 @@ export function* scanTokensWorker({
 
   yield put(startTokenScan());
 
-  const networks = yield select(getNetworks);
+  const networks = yield select(selectNetworks);
   const allAssets = yield select(getAssets);
 
   const accounts: IAccount[] = requestedAccounts ? requestedAccounts : yield select(getAccounts);
@@ -149,9 +149,7 @@ export function* scanTokensWorker({
 
   try {
     const newAssets = yield call(getBalances, networks, accounts, assets);
-
     yield put(updateAccountAssets(newAssets));
-
     yield put(finishTokenScan());
   } catch (err) {
     console.error(err);

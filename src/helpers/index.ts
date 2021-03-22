@@ -18,7 +18,9 @@ export {
   appendSender,
   ERCType,
   makeTxItem,
-  verifyTransaction
+  verifyTransaction,
+  deriveTxFields,
+  checkRequiresApproval
 } from './transaction';
 export { formatApproveTx } from './erc20';
 export { withProtectTxProvider } from './withProtectTxProvider';

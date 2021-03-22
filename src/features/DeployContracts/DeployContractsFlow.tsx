@@ -46,9 +46,10 @@ const TabsWrapper = styled.div`
   width: fit-content;
 `;
 
-const DeployContractsFlow = (props: RouteComponentProps) => {
+export const DeployContractsFlow = ({ history, location }: RouteComponentProps) => {
   const [step, setStep] = useState(0);
-  const { defaultAccount } = useContext(StoreContext);
+  const { getDefaultAccount } = useContext(StoreContext);
+  const defaultAccount = getDefaultAccount();
   const {
     handleNetworkSelected,
     handleDeploySubmit,
@@ -63,7 +64,6 @@ const DeployContractsFlow = (props: RouteComponentProps) => {
   });
 
   const { account }: DeployContractsState = deployContractsState;
-  const { history, location } = props;
 
   const goToFirstStep = () => {
     setStep(0);

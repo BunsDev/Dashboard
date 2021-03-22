@@ -1,24 +1,18 @@
 import React, { createContext, useEffect, useMemo, useState } from 'react';
 
-import isEmpty from 'lodash/isEmpty';
-import prop from 'ramda/src/prop';
-import sortBy from 'ramda/src/sortBy';
-import uniqBy from 'ramda/src/uniqBy';
-
 import { DEFAULT_NETWORK } from '@config';
-import { MembershipState, MembershipStatus } from '@features/PurchaseMembership/config';
+import { MembershipStatus } from '@features/PurchaseMembership/config';
 import { makeFinishedTxReceipt } from '@helpers';
-import { useAnalytics } from '@hooks';
-import { ENSService, isEthereumAccount } from '@services';
+import { ENSService } from '@services/ApiService';
 import { HistoryService, ITxHistoryApiResponse } from '@services/ApiService/History';
 import { UniClaimResult } from '@services/ApiService/Uniswap/Uniswap';
 import { getTimestampFromBlockNum, getTxStatus, ProviderHandler } from '@services/EthService';
+import { isEthereumAccount } from '@services/Store/Account';
 import {
+  addAccounts,
   deleteMembership,
   fetchAssets,
   fetchMemberships,
-  getMemberships,
-  getMembershipState,
   isMyCryptoMember,
   scanTokens,
   useDispatch,
@@ -27,45 +21,39 @@ import {
 import { translateRaw } from '@translations';
 import {
   Asset,
+  Bigish,
   DomainNameRecord,
   IAccount,
   IAccountAdditionData,
   IPendingTxReceipt,
-  IRawAccount,
   ITxStatus,
   ITxType,
   Network,
   NetworkId,
-  ReserveAsset,
   StoreAccount,
   StoreAsset,
   TAddress,
-  TTicker,
   TUuid,
   WalletId
 } from '@types';
 import {
+  bigify,
   convertToFiatFromAsset,
   generateDeterministicAddressUUID,
   generateUUID,
+  getAccountsByNetwork,
+  getAccountsByViewOnly,
   getWeb3Config,
   isArrayEqual,
   isSameAddress,
-  multiplyBNFloats,
   sortByLabel,
-  useInterval,
-  weiToFloat
+  useInterval
 } from '@utils';
-import { isEmpty as isVoid, useEffectOnce } from '@vendor';
+import { isEmpty, isEmpty as isVoid, pipe, prop, sortBy, uniqBy, useEffectOnce } from '@vendor';
 
-import { ANALYTICS_CATEGORIES, UniswapService } from '../ApiService';
+import { UniswapService } from '../ApiService';
 import { getDashboardAccounts, useAccounts } from './Account';
-import {
-  getAssetByTicker,
-  getNewDefaultAssetTemplateByNetwork,
-  getTotalByAsset,
-  useAssets
-} from './Asset';
+import { getNewDefaultAssetTemplateByNetwork, getTotalByAsset, useAssets } from './Asset';
 import { getAccountsAssetsBalances } from './BalanceService';
 import { useContacts } from './Contact';
 import { findMultipleNextUnusedDefaultLabels } from './Contact/helpers';
@@ -89,11 +77,9 @@ interface IAddAccount {
 }
 
 export interface State {
-  readonly defaultAccount: StoreAccount;
   readonly accounts: StoreAccount[];
   readonly networks: Network[];
   readonly isMyCryptoMember: boolean;
-  readonly membershipState: MembershipState;
   readonly memberships?: MembershipStatus[];
   readonly currentAccounts: StoreAccount[];
   readonly userAssets: Asset[];
@@ -103,15 +89,12 @@ export interface State {
   readonly ensOwnershipRecords: DomainNameRecord[];
   readonly isEnsFetched: boolean;
   readonly accountRestore: { [name: string]: IAccount | undefined };
-  isDefault: boolean;
-  tokens(selectedAssets?: StoreAsset[]): StoreAsset[];
+  getDefaultAccount(includeViewOnly?: boolean, networkId?: NetworkId): StoreAccount | undefined;
   assets(selectedAccounts?: StoreAccount[]): StoreAsset[];
   totals(selectedAccounts?: StoreAccount[]): StoreAsset[];
   totalFiat(
     selectedAccounts?: StoreAccount[]
-  ): (getAssetRate: (asset: Asset) => number | undefined) => number;
-  assetTickers(targetAssets?: StoreAsset[]): TTicker[];
-  assetUUIDs(targetAssets?: StoreAsset[]): any[];
+  ): (getAssetRate: (asset: Asset) => number | undefined) => Bigish;
   deleteAccountFromCache(account: IAccount): void;
   restoreDeletedAccount(accountId: TUuid): void;
   addMultipleAccounts(
@@ -119,13 +102,6 @@ export interface State {
     walletId: WalletId | undefined,
     accounts: IAccountAdditionData[]
   ): IAccount[] | undefined;
-  getAssetByTicker(ticker: TTicker): Asset | undefined;
-  getAccount(a: IRawAccount): StoreAccount | undefined;
-  getDeFiAssetReserveAssets(
-    asset: StoreAsset
-  ): (
-    getPoolAssetReserveRate: (poolTokenUUID: string, assets: Asset[]) => ReserveAsset[]
-  ) => StoreAsset[];
 }
 export const StoreContext = createContext({} as State);
 
@@ -139,7 +115,6 @@ export const StoreProvider: React.FC = ({ children }) => {
     getAccountByAddressAndNetworkName,
     updateAccounts,
     deleteAccount,
-    createAccountWithID,
     createMultipleAccountsWithIDs
   } = useAccounts();
   const { assets } = useAssets();
@@ -147,8 +122,6 @@ export const StoreProvider: React.FC = ({ children }) => {
   const { networks } = useNetworks();
   const { createContact, contacts, getContactByAddressAndNetworkId, updateContact } = useContacts();
   const dispatch = useDispatch();
-  const memberships = useSelector(getMemberships);
-  const membershipState = useSelector(getMembershipState);
 
   const [accountRestore, setAccountRestore] = useState<{ [name: string]: IAccount | undefined }>(
     {}
@@ -192,15 +165,6 @@ export const StoreProvider: React.FC = ({ children }) => {
     true,
     [networks]
   );
-
-  useAnalytics({
-    category: ANALYTICS_CATEGORIES.ROOT,
-    actionName: accounts.length === 0 ? 'New User' : 'Returning User',
-    eventParams: {
-      visitStartAccountNumber: accounts.length
-    },
-    triggerOnMount: true
-  });
 
   useEffectOnce(() => {
     dispatch(fetchMemberships());
@@ -346,8 +310,6 @@ export const StoreProvider: React.FC = ({ children }) => {
     accounts,
     networks,
     isMyCryptoMember: useSelector(isMyCryptoMember),
-    membershipState,
-    memberships,
     currentAccounts,
     accountRestore,
     coinGeckoAssetManifest,
@@ -355,17 +317,6 @@ export const StoreProvider: React.FC = ({ children }) => {
     uniClaims,
     ensOwnershipRecords,
     isEnsFetched,
-    get defaultAccount() {
-      return sortByLabel(state.accounts)[0];
-    },
-    /**
-     * Check if the user has already added an account to our persistence layer.
-     */
-    get isDefault() {
-      return (
-        (!state.accounts || isVoid(state.accounts)) && (!isVoid(contacts) || contacts.length < 1)
-      );
-    },
     get userAssets() {
       const userAssets = state.accounts
         .filter((a: StoreAccount) => a.wallet !== WalletId.VIEW_ONLY)
@@ -374,10 +325,14 @@ export const StoreProvider: React.FC = ({ children }) => {
       const uniq = uniqBy(prop('uuid'), userAssets);
       return sortBy(prop('ticker'), uniq);
     },
+    getDefaultAccount: (includeViewOnly?: boolean, networkId?: NetworkId) =>
+      pipe(
+        (a: StoreAccount[]) => getAccountsByNetwork(a, networkId),
+        (a) => getAccountsByViewOnly(a, includeViewOnly),
+        sortByLabel
+      )(accounts)[0],
     assets: (selectedAccounts = state.accounts) =>
       selectedAccounts.flatMap((account: StoreAccount) => account.assets),
-    tokens: (selectedAssets = state.assets()) =>
-      selectedAssets.filter((asset: StoreAsset) => asset.type !== 'base'),
     totals: (selectedAccounts = state.accounts) =>
       Object.values(getTotalByAsset(state.assets(selectedAccounts))),
     totalFiat: (selectedAccounts = state.accounts) => (
@@ -386,33 +341,24 @@ export const StoreProvider: React.FC = ({ children }) => {
       state
         .totals(selectedAccounts)
         .reduce(
-          (sum, asset) => (sum += parseFloat(convertToFiatFromAsset(asset, getAssetRate(asset)))),
-          0
+          (sum, asset) => sum.plus(bigify(convertToFiatFromAsset(asset, getAssetRate(asset)))),
+          bigify(0)
         ),
-
-    assetTickers: (targetAssets = state.assets()) => [
-      ...new Set(targetAssets.map((a) => a.ticker))
-    ],
-    assetUUIDs: (targetAssets = state.assets()) => {
-      return [...new Set(targetAssets.map((a: StoreAsset) => a.uuid))];
-    },
     deleteAccountFromCache: (account) => {
       setAccountRestore((prevState) => ({ ...prevState, [account.uuid]: account }));
       deleteAccount(account);
       updateSettingsAccounts(
         settings.dashboardAccounts.filter((dashboardUUID) => dashboardUUID !== account.uuid)
       );
-      dispatch(deleteMembership(account.address));
+      dispatch(deleteMembership({ address: account.address, networkId: account.networkId }));
     },
     restoreDeletedAccount: (accountId) => {
       const account = accountRestore[accountId];
       if (isEmpty(account)) {
         throw new Error('Unable to restore account! No account with id specified.');
       }
-
-      const { uuid, ...restAccount } = account!;
-      createAccountWithID(uuid, restAccount);
-      setAccountRestore((prevState) => ({ ...prevState, [uuid]: undefined }));
+      dispatch(addAccounts([account!]));
+      setAccountRestore((prevState) => ({ ...prevState, [account!.uuid]: undefined }));
     },
     addMultipleAccounts: (
       networkId: NetworkId,
@@ -463,22 +409,10 @@ export const StoreProvider: React.FC = ({ children }) => {
       });
       createMultipleAccountsWithIDs(newRawAccounts);
       return newRawAccounts;
-    },
-    getAssetByTicker: getAssetByTicker(assets),
-    getAccount: ({ address, networkId }) =>
-      accounts.find((a) => isSameAddress(a.address, address) && a.networkId === networkId),
-    getDeFiAssetReserveAssets: (poolAsset: StoreAsset) => (
-      getPoolAssetReserveRate: (poolTokenUuid: string, assets: Asset[]) => ReserveAsset[]
-    ) =>
-      getPoolAssetReserveRate(poolAsset.uuid, assets).map((reserveAsset) => ({
-        ...reserveAsset,
-        balance: multiplyBNFloats(
-          weiToFloat(poolAsset.balance, poolAsset.decimal).toString(),
-          reserveAsset.reserveExchangeRate
-        ),
-        mtime: Date.now()
-      }))
+    }
   };
 
   return <StoreContext.Provider value={state}>{children}</StoreContext.Provider>;
 };
+
+export default StoreProvider;

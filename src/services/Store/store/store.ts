@@ -3,6 +3,8 @@ import { createLogger } from 'redux-logger';
 import { persistStore } from 'redux-persist';
 import createSagaMiddleware from 'redux-saga';
 
+import { analyticsMiddleware } from '@services/Analytics';
+import { pollStart } from '@services/Polling';
 import { updateAccounts } from '@store';
 import { IS_DEV } from '@utils';
 
@@ -28,11 +30,14 @@ export default function createStore(initialState?: DeepPartial<AppState>) {
             ...REDUX_PERSIST_ACTION_TYPES,
             // ignore updateAccounts to avoid errors for transaction gasPrice, gasLimit, value etc
             // @todo: Redux solve once we have selectors to deserialize.
-            updateAccounts.type
+            updateAccounts.type,
+            // ignore pollStart to avoid errors with the methods passed in the payload of the action
+            pollStart.type
           ]
         }
       }),
       sagaMiddleware,
+      analyticsMiddleware,
       // Logger MUST be last in chain.
       // https://github.com/LogRocket/redux-logger#usage
       ...(IS_DEV ? [createLogger({ collapsed: true })] : [])

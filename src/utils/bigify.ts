@@ -1,15 +1,21 @@
-import { BigNumber as EthScanBN } from '@ethersproject/bignumber';
+import { BigNumber as BigNumberish } from '@ethersproject/bignumber';
 import BigNumber from 'bignumber.js';
 import BN from 'bn.js';
-import { BigNumber as BigNumberish } from 'ethers/utils';
+
+import { DEFAULT_ASSET_DECIMAL } from '@config';
 
 export type Bigish = BigNumber;
 
-export const bigify = (v: BigNumber.Value | BigNumber | BigNumberish | EthScanBN): BigNumber => {
-  if (BigNumberish.isBigNumber(v)) {
-    return new BigNumber(v.toString());
+export const bigify = (v: BigNumber.Value | BigNumber | BigNumberish | bigint | BN): BigNumber => {
+  BigNumber.config({ DECIMAL_PLACES: DEFAULT_ASSET_DECIMAL, EXPONENTIAL_AT: 1e9 });
+  if (BigNumberish.isBigNumber(v) && 'toHexString' in v) {
+    return new BigNumber(v.toHexString());
+  } else if (BN.isBN(v)) {
+    return new BigNumber(v.toString('hex'));
   } else if (typeof v === 'object' && '_hex' in v) {
     return new BigNumber(v._hex);
+  } else if (typeof v === 'bigint') {
+    return new BigNumber(v.toString(16), 16);
   } else {
     return new BigNumber(v);
   }

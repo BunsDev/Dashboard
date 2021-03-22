@@ -1,10 +1,20 @@
-import { createSelector, createSlice, PayloadAction } from '@reduxjs/toolkit';
+import { BigNumber as EthersBN } from '@ethersproject/bignumber';
+import { createAction, createSelector, createSlice, PayloadAction } from '@reduxjs/toolkit';
+import { put, select, takeLatest } from 'redux-saga/effects';
 
-import { DEFAULT_NETWORK } from '@config';
-import { AssetBalanceObject, IAccount, LSKeys, TUuid, WalletId } from '@types';
-import { filter, findIndex, pipe, propEq, reject } from '@vendor';
+import {
+  AssetBalanceObject,
+  ExtendedAsset,
+  IAccount,
+  IProvidersMappings,
+  LSKeys,
+  TUuid
+} from '@types';
+import { findIndex, propEq } from '@vendor';
 
+import { getAssetByUUID } from './asset.slice';
 import { getAppState } from './selectors';
+import { addAccountsToFavorites, getIsDemoMode } from './settings.slice';
 
 export const initialState = [] as IAccount[];
 
@@ -21,6 +31,12 @@ const slice = createSlice({
       action.payload.forEach((a) => {
         state.push(a);
       });
+    },
+    resetAndCreate(_, action: PayloadAction<IAccount>) {
+      return [action.payload];
+    },
+    resetAndCreateMany(_, action: PayloadAction<IAccount[]>) {
+      return action.payload;
     },
     destroy(state, action: PayloadAction<TUuid>) {
       const idx = findIndex(propEq('uuid', action.payload), state);
@@ -53,6 +69,8 @@ const slice = createSlice({
 export const {
   create: createAccount,
   createMany: createAccounts,
+  resetAndCreate: resetAndCreateAccount,
+  resetAndCreateMany: resetAndCreateManyAccounts,
   destroy: destroyAccount,
   update: updateAccount,
   updateMany: updateAccounts,
@@ -65,9 +83,52 @@ export default slice;
 /**
  * Selectors
  */
-export const getAccounts = createSelector([getAppState], (s) => s[slice.name]);
-
-export const getWalletAccountsOnDefaultNetwork = createSelector(
-  getAccounts,
-  pipe(reject(propEq('wallet', WalletId.VIEW_ONLY)), filter(propEq('networkId', DEFAULT_NETWORK)))
+export const getAccounts = createSelector([getAppState], (s) => {
+  const accounts = s[slice.name];
+  return accounts?.map((a) => ({
+    ...a,
+    transactions: a.transactions?.map((t) => ({
+      ...t,
+      value: EthersBN.from(t.value),
+      gasLimit: EthersBN.from(t.gasLimit),
+      gasPrice: EthersBN.from(t.gasPrice),
+      gasUsed: t.gasUsed && EthersBN.from(t.gasUsed)
+    }))
+  }));
+});
+export const getAccountsAssets = createSelector([getAccounts, (s) => s], (a, s) =>
+  a
+    .flatMap((a) => a.assets)
+    .reduce((acc, asset) => [...acc, getAssetByUUID(asset.uuid)(s)!], [] as ExtendedAsset[])
 );
+
+export const getAccountsAssetsMappings = createSelector([getAccountsAssets], (assets) =>
+  assets.reduce(
+    (acc, a) => ({ ...acc, [a.uuid]: a.mappings }),
+    {} as Record<string, IProvidersMappings>
+  )
+);
+
+/**
+ * Actions
+ */
+export const addAccounts = createAction<IAccount[]>(`${slice.name}/addAccounts`);
+
+/**
+ * Sagas
+ */
+export function* accountsSaga() {
+  yield takeLatest(addAccounts.type, handleAddAccounts);
+}
+
+export function* handleAddAccounts({ payload }: PayloadAction<IAccount[]>) {
+  const isDemoMode = yield select(getIsDemoMode);
+  // This is where demo mode is disabled when adding new accounts.
+  if (isDemoMode) {
+    yield put(slice.actions.resetAndCreateMany(payload));
+    yield put(addAccountsToFavorites(payload.map(({ uuid }) => uuid)));
+  } else {
+    yield put(slice.actions.createMany(payload));
+    yield put(addAccountsToFavorites(payload.map(({ uuid }) => uuid)));
+  }
+}

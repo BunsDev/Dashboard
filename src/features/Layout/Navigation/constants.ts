@@ -1,4 +1,4 @@
-import { EXT_URLS } from '@config';
+import { CRYPTOSCAMDB, EXT_URLS } from '@config';
 import { IAppRoutes } from '@routing/routes';
 import { translateRaw } from '@translations';
 import { INavTray, IRouteLink } from '@types';
@@ -92,6 +92,55 @@ export const toolsTray = (APP_ROUTES: IAppRoutes) => {
         to: APP_ROUTES.BROADCAST_TX.path,
         enabled: APP_ROUTES.BROADCAST_TX.enabled,
         icon: 'nav-broadcast-transaction'
+      },
+      {
+        type: 'internal',
+        to: APP_ROUTES.TX_STATUS.path,
+        enabled: APP_ROUTES.TX_STATUS.enabled,
+        title: translateRaw('NAVIGATION_TX_STATUS'),
+        icon: 'nav-tx-status'
+      },
+      {
+        type: 'internal',
+        to: APP_ROUTES.ENS.path,
+        enabled: APP_ROUTES.ENS.enabled,
+        title: translateRaw('NAVIGATION_ENS'),
+        icon: 'nav-ens'
+      },
+      {
+        type: 'internal',
+        to: APP_ROUTES.REP_TOKEN_MIGRATION.path,
+        enabled: APP_ROUTES.REP_TOKEN_MIGRATION.enabled,
+        title: translateRaw('NAVIGATION_MIGRATE_REP'),
+        icon: 'nav-migrate-rep'
+      },
+      {
+        type: 'internal',
+        to: APP_ROUTES.GOLEM_TOKEN_MIGRATION.path,
+        enabled: APP_ROUTES.GOLEM_TOKEN_MIGRATION.enabled,
+        title: translateRaw('NAVIGATION_MIGRATE_GNT'),
+        icon: 'nav-migrate-gnt'
+      },
+      {
+        type: 'internal',
+        to: APP_ROUTES.ANT_TOKEN_MIGRATION.path,
+        enabled: APP_ROUTES.ANT_TOKEN_MIGRATION.enabled,
+        title: translateRaw('NAVIGATION_MIGRATE_ANT'),
+        icon: 'nav-migrate-ant'
+      },
+      {
+        type: 'internal',
+        to: APP_ROUTES.AAVE_TOKEN_MIGRATION.path,
+        enabled: APP_ROUTES.AAVE_TOKEN_MIGRATION.enabled,
+        title: translateRaw('NAVIGATION_MIGRATE_LEND'),
+        icon: 'nav-migrate-lend'
+      },
+      {
+        type: 'internal',
+        to: APP_ROUTES.FAUCET.path,
+        enabled: APP_ROUTES.FAUCET.enabled,
+        title: translateRaw('NAVIGATION_FAUCET'),
+        icon: 'nav-faucet'
       }
     ]
   };
@@ -108,36 +157,31 @@ export const supportUsTray: INavTray = {
       type: 'external',
       title: translateRaw('NAVIGATION_GET_A_LEDGER'),
       link: EXT_URLS.LEDGER_REFERRAL.url,
-      icon: 'nav-ledger',
-      analyticsEvent: 'Ledger Wallet'
+      icon: 'nav-ledger'
     },
     {
       type: 'external',
       title: translateRaw('NAVIGATION_GET_A_TREZOR'),
       link: EXT_URLS.TREZOR_REFERRAL.url,
-      icon: 'nav-trezor',
-      analyticsEvent: 'TREZOR'
+      icon: 'nav-trezor'
     },
     {
       type: 'external',
       title: translateRaw('NAVIGATION_GET_QUIKNODE'),
       link: EXT_URLS.QUIKNODE_REFERRAL.url,
-      icon: 'nav-quiknode',
-      analyticsEvent: 'Quiknode'
+      icon: 'nav-quiknode'
     },
     {
       type: 'external',
       title: translateRaw('NAVIGATION_BUY_ETH'),
       link: EXT_URLS.COINBASE_REFERRAL.url,
-      icon: 'nav-coinbase',
-      analyticsEvent: 'Coinbase'
+      icon: 'nav-coinbase'
     },
     {
       type: 'external',
       title: translateRaw('NAVIGATION_UNSTOPPABLE'),
       link: EXT_URLS.UNSTOPPABLEDOMAINS_REFERRAL.url,
-      icon: 'nav-unstoppable',
-      analyticsEvent: 'UnstoppableDomains'
+      icon: 'nav-unstoppable'
     }
   ]
 };
@@ -245,6 +289,55 @@ export const mobileLinks = (APP_ROUTES: IAppRoutes) => {
           to: APP_ROUTES.BROADCAST_TX.path,
           enabled: APP_ROUTES.BROADCAST_TX.enabled,
           icon: 'nav-broadcast-transaction'
+        },
+        {
+          type: 'internal',
+          to: APP_ROUTES.TX_STATUS.path,
+          enabled: APP_ROUTES.TX_STATUS.enabled,
+          title: translateRaw('NAVIGATION_TX_STATUS'),
+          icon: 'nav-tx-status'
+        },
+        {
+          type: 'internal',
+          to: APP_ROUTES.ENS.path,
+          enabled: APP_ROUTES.ENS.enabled,
+          title: translateRaw('NAVIGATION_ENS'),
+          icon: 'nav-ens'
+        },
+        {
+          type: 'internal',
+          to: APP_ROUTES.REP_TOKEN_MIGRATION.path,
+          enabled: APP_ROUTES.REP_TOKEN_MIGRATION.enabled,
+          title: translateRaw('NAVIGATION_MIGRATE_REP'),
+          icon: 'nav-migrate-rep'
+        },
+        {
+          type: 'internal',
+          to: APP_ROUTES.GOLEM_TOKEN_MIGRATION.path,
+          enabled: APP_ROUTES.GOLEM_TOKEN_MIGRATION.enabled,
+          title: translateRaw('NAVIGATION_MIGRATE_GNT'),
+          icon: 'nav-migrate-gnt'
+        },
+        {
+          type: 'internal',
+          to: APP_ROUTES.ANT_TOKEN_MIGRATION.path,
+          enabled: APP_ROUTES.ANT_TOKEN_MIGRATION.enabled,
+          title: translateRaw('NAVIGATION_MIGRATE_ANT'),
+          icon: 'nav-migrate-ant'
+        },
+        {
+          type: 'internal',
+          to: APP_ROUTES.AAVE_TOKEN_MIGRATION.path,
+          enabled: APP_ROUTES.AAVE_TOKEN_MIGRATION.enabled,
+          title: translateRaw('NAVIGATION_MIGRATE_LEND'),
+          icon: 'nav-migrate-lend'
+        },
+        {
+          type: 'internal',
+          to: APP_ROUTES.FAUCET.path,
+          enabled: APP_ROUTES.FAUCET.enabled,
+          title: translateRaw('NAVIGATION_FAUCET'),
+          icon: 'nav-faucet'
         }
       ]
     },
@@ -258,3 +351,72 @@ export const mobileLinks = (APP_ROUTES: IAppRoutes) => {
   ];
   return Links;
 };
+
+export const socialLinks = [
+  {
+    link: 'https://twitter.com/mycrypto',
+    icon: 'nav-twitter'
+  },
+  {
+    link: 'https://www.facebook.com/mycryptoHQ/',
+    icon: 'nav-facebook'
+  },
+  {
+    link: 'https://medium.com/@mycrypto',
+    icon: 'nav-medium'
+  },
+  {
+    link: 'https://www.linkedin.com/company/mycrypto',
+    icon: 'nav-linkedin'
+  },
+  {
+    link: 'https://github.com/MyCryptoHQ',
+    icon: 'nav-github'
+  },
+  {
+    link: 'https://www.reddit.com/r/mycrypto/',
+    icon: 'nav-reddit'
+  },
+  {
+    link: 'https://discord.gg/VSaTXEA',
+    icon: 'nav-discord'
+  }
+];
+
+export const MYCLinks = [
+  {
+    title: translateRaw('NEW_FOOTER_TEXT_8'),
+    link: 'https://mycrypto.com/about',
+    icon: 'nav-team'
+  },
+  {
+    title: translateRaw('NEW_FOOTER_TEXT_9'),
+    link: 'mailto:press@mycrypto.com',
+    icon: 'nav-press'
+  },
+  {
+    title: translateRaw('NEW_FOOTER_TEXT_10'),
+    link: 'https://mycrypto.com/privacy/',
+    icon: 'nav-privacy'
+  }
+];
+
+export const productsLinks = [
+  {
+    title: 'EtherAddressLookup',
+    link:
+      'https://chrome.google.com/webstore/detail/etheraddresslookup/pdknmigbbbhmllnmgdfalmedcmcefdfn'
+  },
+  {
+    title: 'CryptoScamDB',
+    link: CRYPTOSCAMDB
+  },
+  {
+    title: 'MoneroVision',
+    link: 'https://monerovision.com/'
+  },
+  {
+    title: 'FindETH',
+    link: 'https://findeth.io'
+  }
+];

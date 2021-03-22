@@ -12,3 +12,5 @@ export { default as useUpdateEffect } from './useUpdateEffect';
 export { default as useUnmount } from './useUnmount';
 export { isClient } from './util';
 export { default as useTimeoutFn } from './useTimeoutFn';
+export { default as useClickAway } from './useClickAway';
+export { default as useDebounce } from './useDebounce';

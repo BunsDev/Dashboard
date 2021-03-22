@@ -1,21 +1,19 @@
-import { addHexPrefix, toChecksumAddress } from 'ethereumjs-util';
-import { TransactionReceipt, TransactionResponse } from 'ethers/providers';
+import { getAddress } from '@ethersproject/address';
+import { BigNumber } from '@ethersproject/bignumber';
+import { BytesLike, hexlify } from '@ethersproject/bytes';
+import { TransactionReceipt, TransactionResponse } from '@ethersproject/providers';
 import {
-  Arrayish,
-  BigNumber,
-  bigNumberify,
-  formatEther,
-  hexlify,
-  parseTransaction,
+  parse as parseTransaction,
   recoverAddress,
-  serializeTransaction,
+  serialize as serializeTransaction,
   Transaction
-} from 'ethers/utils';
+} from '@ethersproject/transactions';
+import { formatEther } from '@ethersproject/units';
 import { Optional } from 'utility-types';
 
 import { CREATION_ADDRESS } from '@config';
 import { fetchGasPriceEstimates, getGasEstimate } from '@services/ApiService';
-import { decodeTransfer, getNonce } from '@services/EthService';
+import { decodeTransfer, ERC20, getNonce, ProviderHandler } from '@services/EthService';
 import { decodeApproval } from '@services/EthService/contracts/token';
 import {
   getAssetByContractAndNetwork,
@@ -49,6 +47,7 @@ import {
   TAddress
 } from '@types';
 import {
+  addHexPrefix,
   bigify,
   bigNumGasLimitToViewable,
   bigNumGasPriceToViewableGwei,
@@ -56,7 +55,6 @@ import {
   fromTokenBase,
   gasPriceToBase,
   getDecimalFromEtherUnit,
-  hexToNumber,
   isTransactionDataEmpty,
   toWei
 } from '@utils';
@@ -67,7 +65,9 @@ import {
   inputNonceToHex
 } from '@utils/makeTransaction';
 
-const N_DIV_2 = new BigNumber('0x7fffffffffffffffffffffffffffffff5d576e7357a4501ddfe92f46681b20a0');
+const N_DIV_2 = BigNumber.from(
+  '0x7fffffffffffffffffffffffffffffff5d576e7357a4501ddfe92f46681b20a0'
+);
 
 type TxBeforeSender = Pick<ITxObject, 'to' | 'value' | 'data' | 'chainId'>;
 type TxBeforeGasPrice = Optional<ITxObject, 'nonce' | 'gasLimit' | 'gasPrice'>;
@@ -82,12 +82,12 @@ export const toTxReceipt = (txHash: ITxHash, status: ITxHistoryStatus) => (
 
   const txReceipt = {
     hash: txHash,
-    from: txConfig.from,
-    receiverAddress: txConfig.receiverAddress,
-    gasLimit: bigNumberify(gasLimit),
-    gasPrice: bigNumberify(gasPrice),
-    value: bigNumberify(txConfig.rawTransaction.value),
-    to: txConfig.rawTransaction.to,
+    from: getAddress(txConfig.from) as TAddress,
+    receiverAddress: getAddress(txConfig.receiverAddress) as TAddress,
+    gasLimit: BigNumber.from(gasLimit),
+    gasPrice: BigNumber.from(gasPrice),
+    value: BigNumber.from(txConfig.rawTransaction.value),
+    to: getAddress(txConfig.rawTransaction.to) as TAddress,
 
     status,
     amount,
@@ -130,7 +130,7 @@ export const makeFinishedTxReceipt = (
   confirmations
 });
 
-const decodeTransaction = (signedTx: Arrayish) => {
+const decodeTransaction = (signedTx: BytesLike) => {
   const decodedTransaction = parseTransaction(signedTx);
   const gasLimit = bigNumGasLimitToViewable(decodedTransaction.gasLimit.toString());
   const gasPriceGwei = bigNumGasPriceToViewableGwei(decodedTransaction.gasPrice.toString());
@@ -148,9 +148,19 @@ const decodeTransaction = (signedTx: Arrayish) => {
   };
 };
 
+const buildRawTxFromSigned = (signedTx: BytesLike): ITxObject => {
+  const decodedTx = parseTransaction(signedTx);
+  return ({
+    ...decodedTx,
+    value: decodedTx.value.toHexString() as ITxValue,
+    gasLimit: decodedTx.gasLimit.toHexString() as ITxGasLimit,
+    gasPrice: decodedTx.gasPrice.toHexString() as ITxGasPrice
+  } as unknown) as ITxObject;
+};
+
 // needs testing
 export const makeTxConfigFromSignedTx = (
-  signedTx: Arrayish,
+  signedTx: BytesLike,
   assets: ExtendedAsset[],
   networks: Network[],
   accounts: StoreAccount[],
@@ -164,8 +174,12 @@ export const makeTxConfigFromSignedTx = (
     assets
   });
 
+  const rawTransaction = oldTxConfig.rawTransaction
+    ? oldTxConfig.rawTransaction
+    : buildRawTxFromSigned(signedTx);
+
   const txConfig = {
-    rawTransaction: oldTxConfig.rawTransaction,
+    rawTransaction,
     receiverAddress: (contractAsset
       ? decodeTransfer(decodedTx.data)._to
       : decodedTx.to) as TAddress,
@@ -181,7 +195,7 @@ export const makeTxConfigFromSignedTx = (
         ? getStoreAccount(accounts)(decodedTx.from as TAddress, networkDetected.id) ||
           oldTxConfig.senderAccount
         : oldTxConfig.senderAccount,
-    gasPrice: gasPriceToBase(parseInt(decodedTx.gasPrice, 10)).toString(),
+    gasPrice: gasPriceToBase(decodedTx.gasPrice).toString(),
     gasLimit: decodedTx.gasLimit,
     data: decodedTx.data,
     nonce: decodedTx.nonce.toString(),
@@ -214,19 +228,19 @@ export const makeTxConfigFromTxResponse = (
 
   const txConfig = {
     rawTransaction: {
-      to: toChecksumAddress(to) as ITxToAddress,
+      to: getAddress(to) as ITxToAddress,
       value: hexlify(decodedTx.value) as ITxValue,
       gasLimit: hexlify(decodedTx.gasLimit) as ITxGasLimit,
       data: decodedTx.data as ITxData,
       gasPrice: hexlify(decodedTx.gasPrice) as ITxGasPrice,
       nonce: hexlify(decodedTx.nonce) as ITxNonce,
       chainId: decodedTx.chainId,
-      from: toChecksumAddress(decodedTx.from) as ITxFromAddress
+      from: getAddress(decodedTx.from) as ITxFromAddress
     },
-    receiverAddress: toChecksumAddress(receiverAddress) as TAddress,
+    receiverAddress: getAddress(receiverAddress) as TAddress,
     amount,
     network,
-    value: bigNumberify(decodedTx.value).toString(),
+    value: BigNumber.from(decodedTx.value).toString(),
     asset,
     baseAsset,
     senderAccount: getStoreAccount(accounts)(decodedTx.from as TAddress, network.id)!,
@@ -234,7 +248,7 @@ export const makeTxConfigFromTxResponse = (
     gasLimit: decodedTx.gasLimit.toString(),
     data: decodedTx.data,
     nonce: decodedTx.nonce.toString(),
-    from: toChecksumAddress(decodedTx.from) as TAddress
+    from: getAddress(decodedTx.from) as TAddress
   };
   return txConfig;
 };
@@ -253,31 +267,31 @@ export const makeTxConfigFromTxReceipt = (
 
   const txConfig = {
     rawTransaction: {
-      to: toChecksumAddress(txReceipt.to),
-      value: bigNumberify(txReceipt.value).toHexString(),
-      gasLimit: bigNumberify(txReceipt.gasLimit).toHexString(),
+      to: getAddress(txReceipt.to),
+      value: BigNumber.from(txReceipt.value).toHexString(),
+      gasLimit: BigNumber.from(txReceipt.gasLimit).toHexString(),
       data: txReceipt.data,
-      gasPrice: bigNumberify(txReceipt.gasPrice).toHexString(),
-      nonce: bigNumberify(txReceipt.nonce).toHexString(),
+      gasPrice: BigNumber.from(txReceipt.gasPrice).toHexString(),
+      nonce: BigNumber.from(txReceipt.nonce).toHexString(),
       chainId: network.chainId,
-      from: toChecksumAddress(txReceipt.from)
+      from: getAddress(txReceipt.from)
     },
-    receiverAddress: toChecksumAddress(
+    receiverAddress: getAddress(
       contractAsset ? decodeTransfer(txReceipt.data)._to : txReceipt.to
     ) as TAddress,
     amount: contractAsset
       ? fromTokenBase(toWei(decodeTransfer(txReceipt.data)._value, 0), contractAsset.decimal)
       : txReceipt.amount,
     network,
-    value: bigNumberify(txReceipt.value).toString(),
+    value: BigNumber.from(txReceipt.value).toString(),
     asset: contractAsset || baseAsset,
     baseAsset,
     senderAccount: getStoreAccount(accounts)(txReceipt.from, network.id),
-    gasPrice: bigNumberify(txReceipt.gasPrice).toString(),
-    gasLimit: bigNumberify(txReceipt.gasLimit).toString(),
+    gasPrice: BigNumber.from(txReceipt.gasPrice).toString(),
+    gasLimit: BigNumber.from(txReceipt.gasLimit).toString(),
     data: txReceipt.data,
     nonce: txReceipt.nonce,
-    from: toChecksumAddress(txReceipt.from)
+    from: getAddress(txReceipt.from)
   };
   // @ts-expect-error Ignore possible missing senderAccount for now
   return txConfig;
@@ -380,6 +394,10 @@ export const appendSender = (senderAddress: ITxFromAddress) => (
 export const appendGasPrice = (network: Network) => async (
   tx: TxBeforeGasPrice
 ): Promise<TxBeforeGasLimit> => {
+  // Respect gas price if present
+  if (tx.gasPrice) {
+    return tx as TxBeforeGasLimit;
+  }
   const gasPrice = await fetchGasPriceEstimates(network)
     .then(({ fast }) => fast.toString())
     .then(inputGasPriceToHex)
@@ -405,16 +423,16 @@ export const appendGasLimit = (network: Network) => async (
   }
   try {
     const gasLimit = await getGasEstimate(network, tx)
-      .then(hexToNumber)
-      .then((n: number) => Math.round(n * 1.2))
-      .then((n: number) => inputGasLimitToHex(n.toString()));
+      .then(bigify)
+      .then((n) => n.multipliedBy(1.2).integerValue(7))
+      .then(inputGasLimitToHex);
 
     return {
       ...tx,
       gasLimit
     };
   } catch (err) {
-    throw new Error(`getGasEstimate: ${err.message}`);
+    throw new Error(`getGasEstimate: ${err.reason ? err.reason : err.message}`);
   }
 };
 
@@ -425,7 +443,7 @@ export const appendNonce = (network: Network, senderAddress: TAddress) => async 
     .then((n) => n.toString())
     .then(inputNonceToHex)
     .catch((err) => {
-      throw new Error(`getNonce: ${err.message}`);
+      throw new Error(`getNonce: ${err.reason ? err.reason : err.message}`);
     });
 
   return {
@@ -439,15 +457,28 @@ export const verifyTransaction = (transaction: Transaction): boolean => {
     return false;
   }
 
-  if (new BigNumber(transaction.s).gt(N_DIV_2)) {
+  if (BigNumber.from(transaction.s).gt(N_DIV_2)) {
     return false;
   }
 
   try {
-    const { r, s, v, from, ...unsignedTransaction } = transaction;
+    const { r, s, v, from, hash, ...unsignedTransaction } = transaction;
     const serializedTransaction = serializeTransaction(unsignedTransaction, { r, s, v });
     return !!recoverAddress(serializedTransaction, { r, s, v });
   } catch (e) {
     return false;
   }
+};
+
+export const checkRequiresApproval = async (
+  network: Network,
+  token: string,
+  owner: string,
+  data: string
+) => {
+  const provider = new ProviderHandler(network);
+  const { _spender, _value } = ERC20.approve.decodeInput(data);
+  const allowance = await provider.getTokenAllowance(token, owner, _spender);
+  // If allowance is less than the value being sent, the approval is needed
+  return bigify(allowance).lt(bigify(_value));
 };

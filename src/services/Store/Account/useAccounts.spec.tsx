@@ -1,20 +1,22 @@
 import React from 'react';
 
 import { renderHook } from '@testing-library/react-hooks';
-import { actionWithPayload, mockUseDispatch, ProvidersWrapper, waitFor } from 'test-utils';
+import {
+  actionWithPayload,
+  mockAppState,
+  mockUseDispatch,
+  ProvidersWrapper,
+  waitFor
+} from 'test-utils';
 
-import { fAccounts, fSettings, fTxReceipt } from '@fixtures';
-import { IAccount, TUuid } from '@types';
+import { fAccounts, fTxReceipt } from '@fixtures';
+import { IAccount } from '@types';
 
-import { DataContext, IDataContext } from '../DataManager';
 import useAccounts from './useAccounts';
 
 jest.mock('../Settings', () => {
   return {
-    useSettings: () => ({
-      addAccountToFavorites: jest.fn(),
-      addMultipleAccountsToFavorites: jest.fn()
-    })
+    useSettings: () => ({})
   };
 });
 
@@ -22,9 +24,7 @@ jest.mock('@mycrypto/eth-scan', () => {
   return {
     getTokensBalance: jest.fn().mockImplementation(() =>
       Promise.resolve({
-        '0xad6d458402f60fd3bd25163575031acdce07538d': {
-          _hex: '0x0e22e84c2c724c00'
-        }
+        '0xad6d458402f60fd3bd25163575031acdce07538d': BigInt('0x0e22e84c2c724c00')
       })
     )
   };
@@ -32,26 +32,15 @@ jest.mock('@mycrypto/eth-scan', () => {
 
 const renderUseAccounts = ({ accounts = [] as IAccount[] } = {}) => {
   const wrapper: React.FC = ({ children }) => (
-    <ProvidersWrapper>
-      <DataContext.Provider value={({ accounts, settings: fSettings } as any) as IDataContext}>
-        {children}
-      </DataContext.Provider>
-    </ProvidersWrapper>
+    <ProvidersWrapper initialState={mockAppState({ accounts })}>{children}</ProvidersWrapper>
   );
   return renderHook(() => useAccounts(), { wrapper });
 };
 
 describe('useAccounts', () => {
-  it('uses get addressbook from DataContext', () => {
+  it('uses get addressbook from store', () => {
     const { result } = renderUseAccounts({ accounts: fAccounts });
     expect(result.current.accounts).toEqual(fAccounts);
-  });
-
-  it('createAccountWithID() calls create', () => {
-    const mockDispatch = mockUseDispatch();
-    const { result } = renderUseAccounts({ accounts: [] });
-    result.current.createAccountWithID('uuid' as TUuid, fAccounts[0]);
-    expect(mockDispatch).toHaveBeenCalledWith(actionWithPayload({ ...fAccounts[0], uuid: 'uuid' }));
   });
 
   it('createMultipleAccountsWithIDs() calls updateAll with multiple accounts', () => {
@@ -109,7 +98,7 @@ describe('useAccounts', () => {
       fAccounts[0].address,
       fAccounts[0].networkId
     );
-    expect(account).toBe(fAccounts[0]);
+    expect(account).toStrictEqual(fAccounts[0]);
   });
 
   it('updateAccounts() calls updateAll with merged list', async () => {

@@ -5,11 +5,10 @@ import { RouteComponentProps, withRouter } from 'react-router-dom';
 import styled from 'styled-components';
 
 import mainImage from '@assets/images/icn-forgot-password.svg';
-import { ExtendedContentPanel } from '@components';
+import { ExtendedContentPanel, LinkApp } from '@components';
 import { ROUTE_PATHS } from '@config';
-import { useAnalytics } from '@hooks';
-import { ANALYTICS_CATEGORIES } from '@services';
 import translate, { translateRaw } from '@translations';
+import { goBack } from '@utils';
 
 import { ScreenLockContext } from './ScreenLockProvider';
 
@@ -44,14 +43,12 @@ const Description = styled.p`
 `;
 
 const ScreenLockForgotPassword: FC<RouteComponentProps> = ({ history }) => {
-  const trackScreenLock = useAnalytics({
-    category: ANALYTICS_CATEGORIES.SCREEN_LOCK
-  });
   const { resetAll } = useContext(ScreenLockContext);
+  const onBack = () => goBack(history);
 
   return (
     <ExtendedContentPanel
-      onBack={history.goBack}
+      onBack={onBack}
       heading={translateRaw('SCREEN_LOCK_FORGOT_PASSWORD_HEADING')}
       description={
         <Description>{translateRaw('SCREEN_LOCK_FORGOT_PASSWORD_DESCRIPTION')}</Description>
@@ -66,17 +63,11 @@ const ScreenLockForgotPassword: FC<RouteComponentProps> = ({ history }) => {
         <p>{translate('SCREEN_LOCK_FORGOT_PASSWORD_LIST_ITEM2')}</p>
       </Description>
       <FormWrapper>
-        <ActionButton
-          onClick={() => {
-            trackScreenLock({ actionName: 'Import Wallet Settings button clicked' });
-            history.push(ROUTE_PATHS.SETTINGS_IMPORT.path);
-          }}
-        >
+        <LinkApp href={ROUTE_PATHS.SETTINGS_IMPORT.path}>
           {translate('SCREEN_LOCK_FORGOT_PASSWORD_ADDITIONAL_IMPORT')}
-        </ActionButton>
+        </LinkApp>
         <ActionButton
           onClick={() => {
-            trackScreenLock({ actionName: 'Start Over button clicked' });
             resetAll();
           }}
         >

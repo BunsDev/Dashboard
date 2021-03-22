@@ -4,8 +4,8 @@ import flatten from 'ramda/src/flatten';
 
 import {
   BalanceMap,
-  getBaseAssetBalances,
-  getTokenAssetBalances
+  getBaseAssetBalancesForAddresses,
+  getSingleTokenBalanceForAddresses
 } from '@services/Store/BalanceService';
 import { ExtendedAsset, Network, TAddress, WalletId } from '@types';
 import { bigify } from '@utils';
@@ -13,7 +13,12 @@ import { bigify } from '@utils';
 import { getDeterministicWallets, LedgerUSB, Wallet } from '..';
 import { LedgerU2F, Trezor, WalletResult } from '../wallets';
 import { KeyInfo } from '../wallets/HardwareWallet';
-import { DWAccountDisplay, ExtendedDPath, IDeterministicWalletService } from './types';
+import {
+  DWAccountDisplay,
+  ExtendedDPath,
+  HardwareInitProps,
+  IDeterministicWalletService
+} from './types';
 
 interface IPrefetchBundle {
   [key: string]: KeyInfo;
@@ -26,7 +31,7 @@ interface EventHandlers {
   handleEnqueueAccounts(accounts: DWAccountDisplay[]): void;
   handleAccountsError(error: string): void;
   handleAccountsSuccess(): void;
-  handleReject(): void;
+  handleReject(err?: string): void;
   handleComplete(): void;
 }
 
@@ -34,9 +39,7 @@ const selectWallet = async (walletId: WalletId) => {
   switch (walletId) {
     default:
     case WalletId.LEDGER_NANO_S_NEW: {
-      const isWebUSBSupported = !navigator.platform.includes('Win')
-        ? await TransportWebUSB.isSupported().catch(() => false)
-        : false;
+      const isWebUSBSupported = await TransportWebUSB.isSupported().catch(() => false);
       return isWebUSBSupported ? new LedgerUSB() : new LedgerU2F(); // @todo - fix the walletId & type
     }
     case WalletId.TREZOR_NEW:
@@ -53,15 +56,15 @@ export const DeterministicWalletService = ({
   handleEnqueueAccounts,
   handleComplete
 }: EventHandlers): IDeterministicWalletService => {
-  const init = async (walletId: WalletId, asset: ExtendedAsset) => {
+  const init = async ({ walletId, asset, dpath }: HardwareInitProps) => {
     const wallet = await selectWallet(walletId);
     wallet
-      .initialize()
+      .initialize(dpath!)
       .then(() => {
         handleInit(wallet, asset);
       })
-      .catch(() => {
-        handleReject();
+      .catch((err) => {
+        handleReject(err);
       });
     handleInitRequest();
   };
@@ -75,22 +78,26 @@ export const DeterministicWalletService = ({
       const prefetchedBundle: IPrefetchBundle = await session.prefetch(dpaths);
       const returnedData = flatten(
         Object.entries(prefetchedBundle).map(([key, value]) => {
-          const dpath = dpaths.find((x) => x.value === key) as ExtendedDPath;
-          return getDeterministicWallets({
-            dPath: key,
-            chainCode: value.chainCode,
-            publicKey: value.publicKey,
-            limit: dpath.numOfAddresses,
-            offset: dpath.offset
-          }).map((item) => ({
-            address: item.address as TAddress,
-            pathItem: {
-              path: `${key}/${item.index}`,
-              baseDPath: dpath,
-              index: item.index
-            },
-            balance: undefined
-          }));
+          try {
+            const dpath = dpaths.find((x) => x.value === key) as ExtendedDPath;
+            return getDeterministicWallets({
+              dPath: key,
+              chainCode: value.chainCode,
+              publicKey: value.publicKey,
+              limit: dpath.numOfAddresses,
+              offset: dpath.offset
+            }).map((item) => ({
+              address: item.address as TAddress,
+              pathItem: {
+                path: `${key}/${item.index}`,
+                baseDPath: dpath,
+                index: item.index
+              },
+              balance: undefined
+            }));
+          } catch {
+            return [];
+          }
         })
       );
       handleEnqueueAccounts(returnedData);
@@ -98,7 +105,7 @@ export const DeterministicWalletService = ({
       const hardenedDPaths = dpaths.filter(({ isHardened }) => isHardened);
       const normalDPaths = dpaths.filter(({ isHardened }) => !isHardened);
       if (normalDPaths.length > 0) {
-        await getNormalDPathAddresses(session, normalDPaths)
+        await getDPathAddresses(session, normalDPaths)
           .then((accounts) => {
             handleEnqueueAccounts(accounts);
           })
@@ -108,7 +115,7 @@ export const DeterministicWalletService = ({
       }
 
       if (hardenedDPaths.length > 0) {
-        await getHardenedDPathAddresses(session, hardenedDPaths)
+        await getDPathAddresses(session, hardenedDPaths)
           .then((accounts) => {
             handleEnqueueAccounts(accounts);
           })
@@ -127,8 +134,8 @@ export const DeterministicWalletService = ({
     const addresses = accounts.map(({ address }) => address);
     const balanceLookup =
       asset.type === 'base'
-        ? () => getBaseAssetBalances(addresses, network)
-        : () => getTokenAssetBalances(addresses, network, asset);
+        ? () => getBaseAssetBalancesForAddresses(addresses, network)
+        : () => getSingleTokenBalanceForAddresses(asset, network, addresses);
 
     try {
       balanceLookup().then((balanceMapData: BalanceMap<BN>) => {
@@ -146,53 +153,30 @@ export const DeterministicWalletService = ({
     }
   };
 
-  const getNormalDPathAddresses = async (
+  const getDPathAddresses = async (
     session: Wallet,
     dpaths: ExtendedDPath[]
   ): Promise<DWAccountDisplay[]> => {
     const outputAddresses: DWAccountDisplay[] = [];
     for (const dpath of dpaths) {
-      for (let idx = 0; idx < dpath.numOfAddresses; idx++) {
-        const data = (await session.getAddress(dpath, idx + dpath.offset)) as WalletResult;
-        const outputObject = {
-          address: data.address as TAddress,
-          pathItem: {
-            path: data.path,
-            baseDPath: dpath,
-            index: idx + dpath.offset
-          },
-          balance: undefined
-        };
-        outputAddresses.push(outputObject);
-        //
-      }
+      try {
+        for (let idx = 0; idx < dpath.numOfAddresses; idx++) {
+          const data = (await session.getAddress(dpath, idx + dpath.offset)) as WalletResult;
+          const outputObject = {
+            address: data.address as TAddress,
+            pathItem: {
+              path: data.path,
+              baseDPath: dpath,
+              index: idx + dpath.offset
+            },
+            balance: undefined
+          };
+          outputAddresses.push(outputObject);
+        }
+        // eslint-disable-next-line no-empty
+      } catch {}
     }
 
-    return outputAddresses;
-  };
-
-  const getHardenedDPathAddresses = async (
-    session: Wallet,
-    dpaths: ExtendedDPath[]
-  ): Promise<DWAccountDisplay[]> => {
-    const outputAddresses: any[] = [];
-    for (const dpath of dpaths) {
-      for (let idx = 0; idx < dpath.numOfAddresses; idx++) {
-        const data = (await session.getAddress(dpath, idx + dpath.offset)) as WalletResult;
-
-        // @todo - fix this type
-        const outputObject = {
-          address: data.address as TAddress,
-          pathItem: {
-            path: data.path,
-            baseDPath: dpath,
-            index: idx + dpath.offset
-          },
-          balance: undefined
-        };
-        outputAddresses.push(outputObject);
-      }
-    }
     return outputAddresses;
   };
 
