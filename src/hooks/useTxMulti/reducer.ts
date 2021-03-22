@@ -1,4 +1,4 @@
-import { TransactionResponse } from 'ethers/providers';
+import { TransactionResponse } from '@ethersproject/providers';
 
 import { ITxHash, ITxObject, ITxStatus, ITxType } from '@types';
 import { getUUID } from '@utils';
@@ -110,7 +110,11 @@ export function TxMultiReducer(state: TxMultiState, action: TxMultiAction): TxMu
       const next = (curr: number) => Math.min(curr + 1, state.transactions.length - 1);
       const transactions = adjust(
         state._currentTxIdx,
-        mergeLeft({ txReceipt, minedAt, status: ITxStatus.CONFIRMED }),
+        mergeLeft({
+          txReceipt,
+          minedAt,
+          status: txReceipt.status === 1 ? ITxStatus.SUCCESS : ITxStatus.FAILED
+        }),
         state.transactions
       );
 

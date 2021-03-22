@@ -11,15 +11,9 @@ import { DeterministicWalletState, ExtendedDPath, isValidPath } from '@services'
 import { BREAK_POINTS, COLORS, FONT_SIZE, SPACING } from '@theme';
 import translate, { Trans, translateRaw } from '@translations';
 import { DPath, ExtendedAsset, Network } from '@types';
-import {
-  accountsToCSV,
-  filterDropdownAssets,
-  filterValidAssets,
-  makeBlob,
-  sortByTicker,
-  useScreenSize
-} from '@utils';
+import { accountsToCSV, filterValidAssets, sortByTicker, useScreenSize } from '@utils';
 
+import { Downloader } from '../Downloader';
 import DeterministicAccountList from './DeterministicAccountList';
 
 const MnemonicWrapper = styled.div`
@@ -86,7 +80,7 @@ const SButton = styled(Button)`
   margin: ${SPACING.MD} 0;
 `;
 
-const SLink = styled.span`
+const SDownloader = styled(Downloader)`
   color: ${COLORS.BLUE_MYC};
   cursor: pointer;
   font-weight: bold;
@@ -177,8 +171,7 @@ const DeterministicWallet = ({
     }
   };
 
-  const handleDownload = () =>
-    window.open(makeBlob('text/csv', accountsToCSV(state.finishedAccounts, assetToUse)));
+  const csv = accountsToCSV(state.finishedAccounts, assetToUse);
 
   const Schema = object().shape({
     label: string().required(translateRaw('REQUIRED')),
@@ -189,7 +182,7 @@ const DeterministicWallet = ({
       )
   });
   const relevantAssets = network ? filterValidAssets(assets, network.id) : [];
-  const filteredAssets = sortByTicker(filterDropdownAssets(relevantAssets));
+  const filteredAssets = sortByTicker(relevantAssets);
 
   return dpathAddView ? (
     <MnemonicWrapper>
@@ -241,9 +234,9 @@ const DeterministicWallet = ({
       </Formik>
       <Typography>
         <Trans id="DETERMINISTIC_SEE_SUMMARY" />{' '}
-        <SLink onClick={handleDownload}>
+        <SDownloader data={csv} fileName="accounts.csv" mime="text/csv">
           <Trans id="DETERMINISTIC_ALTERNATIVES_5" />
-        </SLink>
+        </SDownloader>
         .
       </Typography>
     </MnemonicWrapper>
@@ -260,7 +253,7 @@ const DeterministicWallet = ({
       <Parameters>
         <AssetSelector
           selectedAsset={assetToUse}
-          showAssetIcon={true}
+          showAssetIcon={false}
           showAssetName={true}
           searchable={true}
           assets={filteredAssets}
@@ -268,7 +261,7 @@ const DeterministicWallet = ({
             handleAssetUpdate(option);
           }}
         />
-        <Button onClick={() => setDpathAddView(true)} inverted={true}>
+        <Button onClick={() => setDpathAddView(true)} colorScheme={'inverted'}>
           <Trans id="MNEMONIC_ADD_CUSTOM_DPATH" />
         </Button>
       </Parameters>

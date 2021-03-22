@@ -7,10 +7,12 @@ import { translateRaw } from '@translations';
 
 import { TopNav } from './TopNav';
 
+const clickMock = jest.fn();
+
 function getComponent() {
   return simpleRender(
     <MemoryRouter initialEntries={undefined}>
-      <TopNav isMobile={false} current={'/'} />
+      <TopNav isMobile={false} current={'/'} openTray={clickMock} isTrayOpen={false} />
     </MemoryRouter>
   );
 }
@@ -18,6 +20,6 @@ function getComponent() {
 describe('TopNav', () => {
   test('renders the TopNav', async () => {
     getComponent();
-    expect(screen.getByText(new RegExp(translateRaw('NAVIGATION_NEW'), 'i'))).toBeInTheDocument();
+    expect(screen.getByText(new RegExp(translateRaw('NAVIGATION_JOIN'), 'i'))).toBeInTheDocument();
   });
 });

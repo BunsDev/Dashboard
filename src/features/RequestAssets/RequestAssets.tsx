@@ -11,6 +11,7 @@ import receiveIcon from '@assets/images/icn-receive.svg';
 import {
   AccountSelector,
   AssetSelector,
+  BusyBottom,
   ContentPanel,
   CopyableCodeBlock,
   InlineMessage,
@@ -20,11 +21,10 @@ import { ROUTE_PATHS } from '@config';
 import { validateAmountField } from '@features/SendAssets/components';
 import { getNetworkById, StoreContext, useAssets } from '@services/Store';
 import translate, { translateRaw } from '@translations';
-import { IAccount as IIAccount } from '@types';
+import { BusyBottomConfig, IAccount as IIAccount } from '@types';
 import {
   buildEIP681EtherRequest,
   buildEIP681TokenRequest,
-  filterDropdownAssets,
   filterValidAssets,
   isValidAmount,
   noOp,
@@ -104,12 +104,13 @@ const CodeHeading = styled(Heading)`
 `;
 
 export function RequestAssets({ history }: RouteComponentProps) {
-  const { accounts, defaultAccount, networks } = useContext(StoreContext);
+  const { accounts, getDefaultAccount, networks } = useContext(StoreContext);
+  const defaultAccount = getDefaultAccount(true);
   const { assets } = useAssets();
-  const [networkId, setNetworkId] = useState(defaultAccount.networkId);
+  const [networkId, setNetworkId] = useState(defaultAccount!.networkId);
   const network = getNetworkById(networkId, networks);
   const relevantAssets = network ? filterValidAssets(assets, network.id) : [];
-  const filteredAssets = sortByTicker(filterDropdownAssets(relevantAssets));
+  const filteredAssets = sortByTicker(relevantAssets);
 
   const [chosenAssetUuid, setAssetUuid] = useState(
     filteredAssets.find((a) => a.type === 'base')?.uuid
@@ -129,7 +130,7 @@ export function RequestAssets({ history }: RouteComponentProps) {
   const initialValues = {
     amount: '',
     asset: {},
-    recipientAddress: defaultAccount
+    recipientAddress: defaultAccount!
   };
 
   const validateAmount = (amount: any) => {
@@ -206,6 +207,7 @@ export function RequestAssets({ history }: RouteComponentProps) {
                     <AssetSelector
                       selectedAsset={selectedAsset ? selectedAsset : null}
                       assets={filteredAssets}
+                      showAssetIcon={false}
                       showAssetName={true}
                       searchable={true}
                       onSelect={(option) => {
@@ -282,6 +284,7 @@ export function RequestAssets({ history }: RouteComponentProps) {
           </Form>
         )}
       </Formik>
+      <BusyBottom type={BusyBottomConfig.SUPPORT} />
     </ContentPanel>
   );
 }

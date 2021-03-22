@@ -1,6 +1,3 @@
-import React from 'react'; // For ANNOUNCEMENT_MESSAGE jsx
-
-import translate from '@translations';
 import { NetworkId, TURL } from '@types';
 
 import packageJson from '../../package.json';
@@ -8,14 +5,6 @@ import packageJson from '../../package.json';
 // Displays in the footer
 export const VERSION = packageJson.version;
 export const N_FACTOR = 8192;
-
-// Displays at the top of the site, make message empty string to remove.
-// Type can be primary, warning, danger, success, info, or blank for grey.
-// Message must be a JSX element if you want to use HTML.
-export const ANNOUNCEMENT_TYPE = '';
-export const ANNOUNCEMENT_MESSAGE = (
-  <React.Fragment>{translate('ANNOUNCEMENT_MESSAGE')}</React.Fragment>
-);
 
 const etherScan = 'https://etherscan.io';
 const blockChainInfo = 'https://blockchain.info';
@@ -46,12 +35,9 @@ export const SUPPORT_EMAIL = 'support@mycrypto.com';
 export const LATEST_NEWS_URL = 'https://medium.com/@mycrypto' as TURL;
 export const CRYPTOSCAMDB = 'https://cryptoscamdb.org';
 
-// Handler address will change if the trade contract changes.
-// Can also access handler by calling `approvalHandler()` on the trade contract.
-// Also update eth contracts when updating DexAG addresses
-export const DEXAG_MYC_TRADE_CONTRACT = '0x3d7b19C37d422B43c07C7Ba6353ED2D1689540FD'; //'0xA65440C4CC83D70b44cF244a0da5373acA16a9cb';
-export const DEXAG_MYC_HANDLER_CONTRACT = '0xae0A30ac8C76d85f1E76A3EbDcEdc3047e0da456';
-export const DEX_BASE_URL = 'https://api-v2.dex.ag/';
+export const DEX_BASE_URL = 'https://swap.mycryptoapi.com/';
+export const DEX_FEE_RECIPIENT = '0xD8D46494e200Fa585FC98f86e6A5Ea0DC1F18aD0';
+export const DEX_TRADE_EXPIRATION = 31; // in seconds
 
 export const MOONPAY_PUBLIC_API_KEY = 'pk_live_Fi1kufUL8EflbE49vbZRKa71S2a4Y1D';
 export const MOONPAY_API_QUERYSTRING = `?apiKey=${MOONPAY_PUBLIC_API_KEY}&colorCode=%23163150`;

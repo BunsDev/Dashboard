@@ -1,21 +1,26 @@
 import EthereumApp from '@ledgerhq/hw-app-eth';
 import Transport from '@ledgerhq/hw-transport';
 
-import { DPathsList, LEDGER_DERIVATION_PATHS } from '@config/dpaths';
+import { LEDGER_DERIVATION_PATHS } from '@config/dpaths';
 import { DPath, WalletId } from '@types';
 
 import HardwareWallet, { KeyInfo } from '../HardwareWallet';
 import { getFullPath } from '../helpers';
+import { ledgerErrToMessage } from './helpers';
 
 export default abstract class Ledger extends HardwareWallet {
   protected abstract transport: Transport<any> | null = null;
   protected abstract app: EthereumApp | null = null;
 
-  public async initialize(): Promise<void> {
-    await this.checkConnection();
+  public async initialize(dpath: DPath): Promise<void> {
+    try {
+      await this.checkConnection();
 
-    // Fetch a random address to ensure the connection works
-    await this.getAddress(DPathsList.ETH_LEDGER, 50);
+      // Fetch a random address to ensure the connection works
+      await this.getAddress(dpath, 50);
+    } catch (err) {
+      throw ledgerErrToMessage(err.message);
+    }
   }
 
   public getDPaths(): DPath[] {
@@ -26,7 +31,7 @@ export default abstract class Ledger extends HardwareWallet {
     return WalletId.LEDGER_NANO_S_NEW;
   }
 
-  protected abstract async checkConnection(): Promise<void>;
+  protected abstract checkConnection(): Promise<void>;
 
   protected async getKeyInfo(dPath: DPath): Promise<KeyInfo> {
     await this.checkConnection();

@@ -1,5 +1,6 @@
 import { Reducer } from '@reduxjs/toolkit';
 import {
+  createMigrate,
   createTransform,
   FLUSH,
   PAUSE,
@@ -18,11 +19,12 @@ import autoMergeLevel2 from 'redux-persist/lib/stateReconciler/autoMergeLevel2';
 import storage from 'redux-persist/lib/storage';
 import { OmitByValue, ValuesType } from 'utility-types';
 
+import { defaultContacts } from '@database';
 import { DataStore, EncryptedDataStore, LocalStorage, LSKeys, NetworkId, TUuid } from '@types';
 import { arrayToObj, IS_DEV } from '@utils';
-import { flatten, pipe, values } from '@vendor';
+import { dissoc, flatten, pipe, propEq, reject, values } from '@vendor';
 
-import { mergeNetworks } from './helpers';
+import { mergeAssets, mergeNetworks } from './helpers';
 
 export const REDUX_PERSIST_ACTION_TYPES = [FLUSH, REHYDRATE, PAUSE, PERSIST, PURGE, REGISTER];
 
@@ -44,11 +46,11 @@ const fromReduxStore: TransformInbound<
     case LSKeys.ASSETS:
     case LSKeys.NOTIFICATIONS:
     case LSKeys.USER_ACTIONS: {
-      //@ts-expect-error: TS doesnt' respect swtich type-guard
+      //@ts-expect-error: TS doesnt' respect switch type-guard
       return arrayToObj<TUuid>('uuid')(slice);
     }
     case LSKeys.NETWORKS: {
-      //@ts-expect-error: TS doesnt' respect swtich type-guard
+      //@ts-expect-error: TS doesnt' respect switch type-guard
       return arrayToObj<NetworkId>('id')(slice);
     }
     case LSKeys.SETTINGS:
@@ -107,7 +109,7 @@ const customReconciler: StateReconciler<DataStore> = (inboundState, originalStat
 
   const mergedInboundState = {
     ...inboundState,
-    [LSKeys.ASSETS]: mergeByUuid([...inboundState.assets, ...originalState.assets]),
+    [LSKeys.ASSETS]: mergeAssets(inboundState.assets, originalState.assets),
     [LSKeys.CONTRACTS]: mergeByUuid([...inboundState.contracts, ...originalState.contracts]),
     [LSKeys.NETWORKS]: mergeNetworks(inboundState.networks, originalState.networks)
   };
@@ -130,7 +132,48 @@ const customDeserializer = (slice: ValuesType<LocalStorage>) => {
   }
 };
 
-const APP_PERSIST_CONFIG: PersistConfig<DataStore> = {
+export const migrations = {
+  2: (state: DataStore) => {
+    return {
+      ...state,
+      // @ts-expect-error Autonode is present on data to be migrated, want to remove it
+      networks: state.networks.map(({ autoNode, ...n }) => ({
+        ...n,
+        selectedNode: n.selectedNode === autoNode ? undefined : n.selectedNode
+      }))
+    };
+  },
+  3: (state: DataStore) => {
+    const MYC_DONATE_CONTACT = values(defaultContacts)[0];
+    return {
+      ...state,
+      // Update the label and description of the MYC donate address which exists in
+      // a users local storage.
+      [LSKeys.ADDRESS_BOOK]: [
+        ...reject(propEq('uuid', MYC_DONATE_CONTACT.uuid), state[LSKeys.ADDRESS_BOOK]),
+        MYC_DONATE_CONTACT
+      ]
+    };
+  },
+  4: (state: DataStore) => {
+    return {
+      ...state,
+      // @ts-expect-error rates are present in settings on data to be migrated, want to move it at root of persistence layer
+      rates: state.settings.rates && state.settings.rates,
+      trackedAssets: state.trackedAssets ? state.trackedAssets : [],
+      settings: dissoc('rates', state.settings)
+    };
+  },
+  5: (state: DataStore) => {
+    return {
+      ...state,
+      settings: dissoc('inactivityTimer', state.settings)
+    };
+  }
+};
+
+export const APP_PERSIST_CONFIG: PersistConfig<DataStore> = {
+  version: 5,
   key: 'Storage',
   keyPrefix: 'MYC_',
   storage,
@@ -139,13 +182,15 @@ const APP_PERSIST_CONFIG: PersistConfig<DataStore> = {
   transforms: [transform],
   // @ts-expect-error: deserialize is redux-persist internal
   deserialize: customDeserializer,
-  debug: IS_DEV
+  debug: IS_DEV,
+  // @ts-expect-error: bad type for migrations
+  migrate: createMigrate(migrations, { debug: IS_DEV })
 };
 
 export const createPersistReducer = (reducer: Reducer<DataStore>) =>
   persistReducer(APP_PERSIST_CONFIG, reducer);
 
-const VAULT_PERSIST_CONFIG: PersistConfig<EncryptedDataStore> = {
+export const VAULT_PERSIST_CONFIG: PersistConfig<EncryptedDataStore> = {
   key: 'Vault',
   keyPrefix: 'MYC_',
   blacklist: ['error'],

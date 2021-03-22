@@ -1,26 +1,25 @@
 import { AnyAction } from 'redux';
 import { mockAppState } from 'test-utils';
 
-import { fRates } from '@fixtures';
 import { TFiatTicker, TUuid } from '@types';
 
 import {
   addExcludedAsset,
   addFavorite,
   addFavorites,
+  canTrackProductAnalytics,
   getExcludedAssets,
   getFavorites,
   getFiat,
-  getInactivityTimer,
+  getIsDemoMode,
   getLanguage,
-  getRates,
   initialState,
   removeExcludedAsset,
   resetFavoritesTo,
+  setDemoMode,
   setFiat,
-  setInactivityTimer,
   setLanguage,
-  setRates,
+  setProductAnalyticsAuthorisation,
   default as slice
 } from './settings.slice';
 
@@ -72,18 +71,6 @@ describe('settingsSlice', () => {
     expect(getFiat(actual)).toEqual(fiat);
   });
 
-  it('setRates(): sets rates', () => {
-    const rates = fRates;
-    const actual = reducer(initialState, setRates(rates));
-    expect(getRates(actual)).toEqual(rates);
-  });
-
-  it('setInactivityTimer(): sets time', () => {
-    const time = 2700000;
-    const actual = reducer(initialState, setInactivityTimer(time));
-    expect(getInactivityTimer(actual)).toEqual(time);
-  });
-
   it('addExcludedAsset(), adds uuid to list', () => {
     const uuid = 'uuid1' as TUuid;
     const actual = reducer(initialState, addExcludedAsset(uuid));
@@ -99,5 +86,23 @@ describe('settingsSlice', () => {
     );
     const expected = ['uuid1', 'uuid3'];
     expect(getExcludedAssets(actual)).toEqual(expected);
+  });
+
+  it('setDemomode(), toggles demo mode in settings', () => {
+    const actual = reducer({ ...initialState, isDemoMode: false }, setDemoMode(true));
+    const expected = true;
+    expect(getIsDemoMode(actual)).toEqual(expected);
+  });
+
+  it('setProductAnalyticsAuthorisation(): can set value to false', () => {
+    const value = false;
+    const actual = reducer(initialState, setProductAnalyticsAuthorisation(value));
+    expect(canTrackProductAnalytics(actual)).toEqual(value);
+  });
+
+  it('setProductAnalyticsAuthorisation(): can set value to true', () => {
+    const value = true;
+    const actual = reducer(initialState, setProductAnalyticsAuthorisation(value));
+    expect(canTrackProductAnalytics(actual)).toEqual(value);
   });
 });

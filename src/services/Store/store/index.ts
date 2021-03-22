@@ -1,22 +1,43 @@
 import { useDispatch } from 'react-redux';
 
 export { default as createStore } from './store';
-export { importState, exportState, AppState, getPassword } from './root.reducer';
+export {
+  default as rootReducer,
+  appReset,
+  importState,
+  exportState,
+  AppState
+} from './root.reducer';
 export { initialLegacyState } from './legacy.initialState';
-export { useSelector, default as useAppState } from './useAppState';
 export { useDispatch };
-export { createNotification, updateNotification } from './notification.slice';
-export { setPassword } from './password.slice';
+export { createNotification, updateNotification, selectNotifications } from './notification.slice';
+export { selectPassword } from './password.slice';
 export {
   createAccount,
   createAccounts,
+  resetAndCreateAccount,
+  resetAndCreateManyAccounts,
   destroyAccount,
   updateAccount,
-  updateAccounts
+  updateAccounts,
+  getAccounts,
+  addAccounts
 } from './account.slice';
-export { createContact, destroyContact, updateContact } from './contact.slice';
-export { createUserAction, destroyUserAction, updateUserAction } from './userAction.slice';
-export { createContract, destroyContract } from './contract.slice';
+export {
+  createContact,
+  destroyContact,
+  updateContact,
+  createOrUpdateContact,
+  selectContacts
+} from './contact.slice';
+export {
+  createUserAction,
+  destroyUserAction,
+  updateUserAction,
+  updateUserActionStateByName,
+  selectUserActions
+} from './userAction.slice';
+export { createContract, destroyContract, selectContracts } from './contract.slice';
 export {
   createNetworks,
   createNetwork,
@@ -25,7 +46,10 @@ export {
   updateNetworks,
   deleteNodeOrNetwork,
   deleteNode,
-  canDeleteNode
+  canDeleteNode,
+  selectDefaultNetwork,
+  selectNetworks,
+  selectNetwork
 } from './network.slice';
 export {
   createAssets,
@@ -34,7 +58,9 @@ export {
   updateAsset,
   updateAssets,
   addAssetsFromAPI,
-  fetchAssets
+  fetchAssets,
+  getAssets,
+  getBaseAssetByNetwork
 } from './asset.slice';
 export {
   fetchMemberships,
@@ -54,23 +80,24 @@ export {
   setLanguage,
   getFiat,
   setFiat,
-  setRates,
-  getRates,
-  getInactivityTimer,
-  setInactivityTimer
+  setDemoMode,
+  getIsDemoMode,
+  addAccountsToFavorites,
+  canTrackProductAnalytics,
+  setProductAnalyticsAuthorisation,
+  getSettings
 } from './settings.slice';
 export { importSuccess, importError } from './import.slice';
 export { scanTokens, isScanning } from './tokenScanning.slice';
 export {
-  encrypt,
   decrypt,
-  setEncryptedData,
   clearEncryptedData,
   getDecryptionError,
   getEncryptedData,
   isEncrypted
 } from './vault.slice';
-export { getAppState } from './selectors';
-export { default as persistanceSlice } from './persistance.slice';
-export { appReset } from './root.reducer';
+export { getAppState, useSelector } from './selectors';
+export { default as persistenceSlice } from './persistence.slice';
 export { getMemberships, membershipExpiryDate } from './membership.slice';
+export { setRates, getRates } from './rates.slice';
+export { trackAsset, getTrackedAssets } from './trackedAssets.slice';

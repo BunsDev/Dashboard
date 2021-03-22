@@ -1,6 +1,16 @@
-import { bigNumberify } from 'ethers/utils';
+import { BigNumber } from '@ethersproject/bignumber';
 
-import { ANTv1UUID, DEFAULT_ASSET_DECIMAL, LENDUUID, REPV1UUID, REPV2UUID } from '@config';
+import {
+  ANTv1UUID,
+  DAIUUID,
+  DEFAULT_ASSET_DECIMAL,
+  DEFAULT_NETWORK,
+  LENDUUID,
+  REPV1UUID,
+  REPV2UUID,
+  XDAI_NETWORK,
+  XDAIUUID
+} from '@config';
 import { ExtendedAsset, StoreAsset, TTicker, TUuid } from '@types';
 
 export const fRopDAI: ExtendedAsset = {
@@ -11,6 +21,17 @@ export const fRopDAI: ExtendedAsset = {
   networkId: 'Ropsten',
   contractAddress: '0xad6d458402f60fd3bd25163575031acdce07538d',
   isCustom: true,
+  type: 'erc20'
+};
+
+export const fDAI: ExtendedAsset = {
+  uuid: DAIUUID as TUuid,
+  name: 'DAI v2',
+  decimal: 18,
+  ticker: 'DAI' as TTicker,
+  networkId: DEFAULT_NETWORK,
+  contractAddress: '0x6B175474E89094C44Da98b954EedeAC495271d0F',
+  isCustom: false,
   type: 'erc20'
 };
 
@@ -145,6 +166,15 @@ export const fAssets = [
     isCustom: false,
     type: 'erc20'
   },
+  {
+    uuid: XDAIUUID,
+    name: 'xDAI',
+    type: 'base',
+    networkId: XDAI_NETWORK,
+    isCustom: false,
+    ticker: 'xDAI'
+  },
+  fDAI,
   fRopDAI
 ] as ExtendedAsset[];
 
@@ -157,7 +187,7 @@ export const fStoreAssets = [
     ticker: 'WETH' as TTicker,
     contractAddress: '0xc02aaa39b223fe8d0a0e5c4f27ead9083c756cc2',
     decimal: DEFAULT_ASSET_DECIMAL,
-    balance: bigNumberify(1),
+    balance: BigNumber.from(1),
     mtime: Date.now()
   },
   {
@@ -167,7 +197,7 @@ export const fStoreAssets = [
     type: 'base',
     ticker: 'ETH',
     decimal: DEFAULT_ASSET_DECIMAL,
-    balance: bigNumberify(1),
+    balance: BigNumber.from(1),
     mtime: Date.now()
   },
   {
@@ -177,7 +207,7 @@ export const fStoreAssets = [
     type: 'base',
     ticker: 'GoerliETH',
     decimal: DEFAULT_ASSET_DECIMAL,
-    balance: bigNumberify(1),
+    balance: BigNumber.from(1),
     mtime: Date.now()
   },
   {
@@ -187,12 +217,12 @@ export const fStoreAssets = [
     type: 'base',
     ticker: 'RopstenETH',
     decimal: DEFAULT_ASSET_DECIMAL,
-    balance: bigNumberify(21),
+    balance: BigNumber.from(21),
     mtime: Date.now()
   }
 ] as StoreAsset[];
 
 export const fAsset: StoreAsset = Object.assign({}, fAssets[2], {
-  balance: bigNumberify('0x1b9ced41465be000'),
+  balance: BigNumber.from('0x1b9ced41465be000'),
   mtime: 1581530607024
 });

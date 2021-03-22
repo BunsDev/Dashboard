@@ -1,20 +1,19 @@
 import React from 'react';
 
-import { Link } from 'react-router-dom';
+import { AnyAction, bindActionCreators, Dispatch } from '@reduxjs/toolkit';
+import { connect, ConnectedProps } from 'react-redux';
 import styled from 'styled-components';
 
-import { getWalletConfig, ROUTE_PATHS } from '@config';
-import { useAnalytics } from '@hooks';
-import { ANALYTICS_CATEGORIES } from '@services';
-import { BREAK_POINTS, COLORS } from '@theme';
+import { BusyBottom, LinkApp } from '@components';
+import Button from '@components/Button';
+import { DEMO_SETTINGS, getWalletConfig, ROUTE_PATHS } from '@config';
+import { AppState, getAccounts, getIsDemoMode, importState } from '@store';
+import { SPACING } from '@theme';
 import translate, { translateRaw } from '@translations';
-import { IStory, WalletId } from '@types';
+import { BusyBottomConfig, IStory, WalletId } from '@types';
 import { getWeb3Config } from '@utils';
 
 import { WalletButton } from './WalletButton';
-
-const { SCREEN_XS } = BREAK_POINTS;
-const { BLUE_BRIGHT } = COLORS;
 
 const Heading = styled.p`
   font-size: 34px;
@@ -47,59 +46,29 @@ const WalletsContainer = styled.div`
   margin-top: 12px;
 `;
 
-const InfoWrapper = styled.div`
-  margin-top: 30px;
+const SDemoButtonContainer = styled.div`
   display: flex;
-  flex-direction: column;
-  width: 100%;
-
-  @media screen and (max-width: ${SCREEN_XS}) {
-    padding: 0 15px;
-  }
-`;
-
-interface InfoProps {
-  showInOneLine?: boolean;
-}
-
-const Info = styled.div<InfoProps>`
   justify-content: center;
-  font-size: 16px;
-  text-align: center;
-  color: #093053;
-  white-space: pre-line;
-  width: 100%;
-  flex-direction: column;
-  margin-bottom: 15px;
-  display: ${(props) => (props.showInOneLine ? 'block' : 'grid')};
-
-  @media screen and (max-width: ${SCREEN_XS}) {
-    display: grid;
-  }
-
-  a {
-    color: ${BLUE_BRIGHT};
-  }
+  margin-top: ${SPACING.BASE};
+  margin-bottom: ${SPACING.BASE};
 `;
 
-interface Props {
+interface WalletListProps {
   wallets: IStory[];
   showHeader?: boolean;
   onSelect(name: WalletId): void;
-  calculateMargin?(index: number): string;
 }
 
-export const WalletList = ({ wallets, onSelect, showHeader, calculateMargin }: Props) => {
-  const trackSelectWallet = useAnalytics({
-    category: ANALYTICS_CATEGORIES.ADD_ACCOUNT
-  });
+const WalletList = ({
+  wallets,
+  onSelect,
+  showHeader,
+  isDemoMode,
+  accounts,
+  importState
+}: Props) => {
+  const calculateMargin = (index: number) => (index < 4 ? '2%' : '10px');
 
-  const selectWallet = (name: WalletId) => {
-    trackSelectWallet({
-      actionName: `${name} clicked`
-    });
-    onSelect(name);
-  };
   return (
     <div>
       {showHeader && (
@@ -107,6 +76,20 @@ export const WalletList = ({ wallets, onSelect, showHeader, calculateMargin }: P
           <Heading>{translate('DECRYPT_ACCESS')}</Heading>
           <Description>{translate('ADD_ACCOUNT_DESCRIPTION')}</Description>
         </>
+      )}
+      {accounts.length === 0 && (
+        // @todo: Refactor. use sagas to trigger redirect after import
+        <SDemoButtonContainer>
+          <LinkApp href={ROUTE_PATHS.DASHBOARD.path}>
+            <Button
+              colorScheme={'warning'}
+              disabled={isDemoMode}
+              onClick={() => importState(JSON.stringify(DEMO_SETTINGS))}
+            >
+              {translateRaw('DEMO_BUTTON_TEXT')}
+            </Button>
+          </LinkApp>
+        </SDemoButtonContainer>
       )}
       <WalletsContainer>
         {wallets
@@ -120,31 +103,32 @@ export const WalletList = ({ wallets, onSelect, showHeader, calculateMargin }: P
                 name={translateRaw(walletInfo.lid)}
                 icon={walletInfo.icon}
                 description={translateRaw(walletInfo.description)}
-                margin={calculateMargin && calculateMargin(index)}
-                onClick={() => selectWallet(wallet.name)}
+                margin={calculateMargin(index)}
+                onClick={() => onSelect(wallet.name)}
                 isDisabled={wallet.isDisabled}
               />
             );
           })}
       </WalletsContainer>
-      <InfoWrapper>
-        <Info showInOneLine={true}>
-          {translateRaw('ADD_ACCOUNT_FOOTER_LABEL')}{' '}
-          <Link to={ROUTE_PATHS.CREATE_WALLET.path}>{translateRaw('ADD_ACCOUNT_FOOTER_LINK')}</Link>
-        </Info>
-        <Info>
-          {translateRaw('DOWNLOAD_APP_FOOTER_LABEL')}
-          <Link to={ROUTE_PATHS.DOWNLOAD_DESKTOP_APP.path}>
-            {translateRaw('DOWNLOAD_APP_FOOTER_LINK')}
-          </Link>
-        </Info>
-        <Info showInOneLine={true}>
-          {translateRaw('ADD_ACCOUNT_IMPORT_SETTINGS_LABEL')}{' '}
-          <Link to={ROUTE_PATHS.SETTINGS_IMPORT.path}>
-            {translateRaw('ADD_ACCOUNT_IMPORT_SETTINGS_LINK')}
-          </Link>
-        </Info>
-      </InfoWrapper>
+      <BusyBottom type={BusyBottomConfig.GENERAL} />
     </div>
   );
 };
+
+const mapStateToProps = (state: AppState) => ({
+  isDemoMode: getIsDemoMode(state),
+  accounts: getAccounts(state)
+});
+
+const mapDispatchToProps = (dispatch: Dispatch<AnyAction>) =>
+  bindActionCreators(
+    {
+      importState: importState
+    },
+    dispatch
+  );
+const connector = connect(mapStateToProps, mapDispatchToProps);
+
+type Props = ConnectedProps<typeof connector> & WalletListProps;
+
+export default connector(WalletList);

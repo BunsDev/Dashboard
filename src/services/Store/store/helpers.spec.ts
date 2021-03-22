@@ -1,8 +1,17 @@
-import { fAccount, fAccounts, fLocalStorage, fNetworks } from '@fixtures';
+import { fAccount, fAccounts, fAssets, fLocalStorage, fNetworks, fRates } from '@fixtures';
 import { deMarshallState, marshallState } from '@services/Store/DataManager/utils';
-import { NodeOptions, StoreAsset, TUuid } from '@types';
+import { IProvidersMappings, LocalStorage, LSKeys, NodeOptions, StoreAsset, TUuid } from '@types';
 
-import { canImport, mergeNetworks, serializeAccount, serializeNotification } from './helpers';
+import {
+  buildCoinGeckoIdMapping,
+  canImport,
+  destructureCoinGeckoIds,
+  mergeAssets,
+  mergeNetworks,
+  migrateConfig,
+  serializeAccount,
+  serializeNotification
+} from './helpers';
 
 describe('serializeAccount()', () => {
   const serializedAccountAssets = {
@@ -97,22 +106,41 @@ describe('mergeNetworks', () => {
     const nodeName = 'MyNode';
     const nodes = [...fNetworks[0].nodes, { name: nodeName } as NodeOptions];
     const actual = mergeNetworks(
-      [{ ...fNetworks[0], nodes, selectedNode: nodeName, autoNode: nodeName }, fNetworks[1]],
+      [{ ...fNetworks[0], nodes, selectedNode: nodeName }, fNetworks[1]],
       fNetworks
     );
     expect(actual).toEqual([
-      { ...fNetworks[0], nodes, selectedNode: nodeName, autoNode: nodeName },
-      fNetworks[1]
+      { ...fNetworks[0], nodes, selectedNode: nodeName },
+      fNetworks[1],
+      fNetworks[2]
     ]);
   });
 
   test('it supports merging with new networks in initial state', () => {
     const nodeName = 'eth_ethscan';
-    const actual = mergeNetworks(
-      [],
-      [{ ...fNetworks[0], selectedNode: nodeName, autoNode: nodeName }]
-    );
-    expect(actual).toEqual([{ ...fNetworks[0], selectedNode: nodeName, autoNode: nodeName }]);
+    const actual = mergeNetworks([], [{ ...fNetworks[0], selectedNode: nodeName }]);
+    expect(actual).toEqual([{ ...fNetworks[0], selectedNode: nodeName }]);
+  });
+
+  test('it correctly merges when static info has changed', () => {
+    const [first, ...rest] = fNetworks[0].nodes;
+    const nodes = [{ ...first, disableByDefault: true }, ...rest];
+    const actual = mergeNetworks([fNetworks[0]], [{ ...fNetworks[0], nodes }]);
+    expect(actual).toEqual([{ ...fNetworks[0], nodes }]);
+  });
+});
+
+describe('mergeAssets', () => {
+  it('correctly does basic merging', () => {
+    const actual = mergeAssets([fAssets[0]], [fAssets[1]]);
+    expect(actual).toEqual(expect.arrayContaining([fAssets[0], fAssets[1]]));
+  });
+
+  it('merges to include extra mapping information', () => {
+    const detailedAsset = { ...fAssets[0], mappings: { coinGeckoId: 'ethereum' } };
+    const actual = mergeAssets([detailedAsset], fAssets);
+    const [, ...rest] = fAssets;
+    expect(actual).toEqual([detailedAsset, ...rest]);
   });
 });
 
@@ -132,5 +160,70 @@ describe('canImport()', () => {
     const { accounts, ...lsWithoutAccounts } = fLocalStorage;
     const actual = canImport(lsWithoutAccounts, persistable);
     expect(actual).toBe(false);
+  });
+});
+
+describe('migrateConfig()', () => {
+  it('Migrate rates outside of settings', () => {
+    const toMigrate = {
+      [LSKeys.SETTINGS]: {
+        rates: fRates
+      }
+    };
+    const result = migrateConfig((toMigrate as unknown) as Partial<LocalStorage>);
+
+    expect(result.rates).toEqual(toMigrate.settings.rates);
+    expect(result.settings).not.toContain(toMigrate.settings.rates);
+  });
+  it('Creates trackedAsset object if missing', () => {
+    const toMigrate = {
+      [LSKeys.SETTINGS]: {
+        rates: fRates
+      }
+    };
+    const result = migrateConfig((toMigrate as unknown) as Partial<LocalStorage>);
+
+    expect(result.trackedAssets).toEqual({});
+  });
+});
+
+describe('destructureCoinGeckoIds()', () => {
+  it('returns a new object with asset uuid as key', () => {
+    const rates = {
+      usd: 1524.39,
+      eur: 1280.09
+    };
+
+    const coinGeckoIdMapping = {
+      '356a192b-7913-504c-9457-4d18c28d46e6': 'ethereum'
+    };
+    const expected = {
+      '356a192b-7913-504c-9457-4d18c28d46e6': rates
+    };
+
+    const result = destructureCoinGeckoIds({ ethereum: rates }, coinGeckoIdMapping);
+
+    expect(result).toEqual(expected);
+  });
+});
+
+describe('buildCoinGeckoIdMapping', () => {
+  it('transforms a list of ExtendedAsset to a list of coingecko ids with asset uuid as key', () => {
+    const assets = {
+      [fAssets[0].uuid]: { coinGeckoId: fAssets[0].name, cryptoCompareId: 'notRelevant' },
+      [fAssets[1].uuid]: { coinGeckoId: fAssets[1].name },
+      [fAssets[2].uuid]: { cryptoCompareId: 'anotherOne' }
+    } as Record<string, IProvidersMappings>;
+
+    const expected = {
+      [fAssets[0].uuid]: fAssets[0].name,
+      [fAssets[1].uuid]: fAssets[1].name
+    };
+
+    const result = buildCoinGeckoIdMapping(assets);
+
+    expect(result).toEqual(expected);
+    expect(result[fAssets[0].uuid]).not.toContain(assets[fAssets[0].uuid].cryptoCompareId);
+    expect(Object.keys(result)).not.toContain(fAssets[2].uuid);
   });
 });

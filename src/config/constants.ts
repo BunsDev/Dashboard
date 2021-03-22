@@ -33,13 +33,13 @@ export const DEFAULT_NETWORK_FOR_FALLBACK = 'ropsten';
 
 export const DEFAULT_NETWORK: NetworkId = 'Ethereum';
 
+export const XDAI_NETWORK: NetworkId = 'xDAI';
+
 export const DEFAULT_NETWORK_TICKER = 'ETH' as TTicker;
 
 export const DEFAULT_ASSET_DECIMAL = 18;
 
-export const MYC_DEXAG_COMMISSION_RATE = 0.75;
-
-export const MYC_DEXAG_MARKUP_THRESHOLD = 1.5;
+export const MYC_DEX_COMMISSION_RATE = 0.0025;
 
 export const CREATION_ADDRESS = '0x0000000000000000000000000000000000000000';
 
@@ -54,7 +54,7 @@ export const EXCLUDED_ASSETS = [
   '17da00cc-4901-5e04-87e0-f7e3cf9b382a'
 ];
 
-export const ETH_SCAN_BATCH_SIZE = 300;
+export const ETH_SCAN_BATCH_SIZE = 150;
 
 export const DEFAULT_NUM_OF_ACCOUNTS_TO_SCAN = 5;
 export const DEFAULT_GAP_TO_SCAN_FOR = 5;

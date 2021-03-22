@@ -1,6 +1,5 @@
 import React, { useEffect, useState } from 'react';
 
-import BN from 'bn.js';
 import { OptionProps } from 'react-select';
 import styled from 'styled-components';
 
@@ -9,11 +8,12 @@ import nextIcon from '@assets/images/next-page-button.svg';
 import prevIcon from '@assets/images/previous-page-button.svg';
 import {
   Account,
+  Box,
   Button,
+  Icon,
   InlineMessage,
   Input,
-  LinkOut,
-  NewTabLink,
+  LinkApp,
   Selector,
   Spinner,
   Typography
@@ -21,12 +21,12 @@ import {
 import { DEFAULT_NETWORK_TICKER, HELP_ARTICLE } from '@config';
 import { getBaseAssetByNetwork, getLabelByAddressAndNetwork, isValidPath } from '@services';
 import { useAssets, useContacts } from '@services/Store';
-import { BalanceMap, getBaseAssetBalances } from '@services/Store/BalanceService';
+import { BalanceMap, getBaseAssetBalancesForAddresses } from '@services/Store/BalanceService';
 import { DeterministicWalletData, getDeterministicWallets } from '@services/WalletService';
 import { BREAK_POINTS, COLORS, FONT_SIZE, monospace, SPACING } from '@theme';
 import translate, { translateRaw } from '@translations';
 import { DPath, Network, TAddress, TTicker } from '@types';
-import { buildAddressUrl, fromWei } from '@utils';
+import { bigify, buildAddressUrl, fromWei } from '@utils';
 
 import { Table } from '../Table';
 
@@ -61,6 +61,7 @@ const Title = styled.div`
 
 const SDropdown = styled.div`
   width: 365px;
+  margin-left: ${SPACING.SM};
 
   @media (max-width: ${BREAK_POINTS.SCREEN_XS}) {
     width: 100%;
@@ -77,7 +78,7 @@ const DropdownDPath = styled.span`
 const SContainer = styled('div')`
   display: flex;
   flex-direction: row;
-  padding: 12px;
+  padding: 12px 12px 12px 0px;
 `;
 
 const CustomDPath = styled.div`
@@ -269,18 +270,19 @@ export function DeterministicWalletsClass({
   const getBaseBalances = () => {
     const addressesToLookup = wallets.map((wallet) => wallet.address);
     try {
-      return getBaseAssetBalances(addressesToLookup, network).then((balanceMapData: BalanceMap) => {
-        const walletsWithBalances: DeterministicWalletData[] = wallets.map((wallet) => {
-          const balance = balanceMapData[wallet.address] || 0;
-          const value = new BN(balance.toString());
-          return {
-            ...wallet,
-            value
-          };
-        });
-        setRequestingBalanceCheck(false);
-        setWallets(walletsWithBalances);
-      });
+      return getBaseAssetBalancesForAddresses(addressesToLookup, network).then(
+        (balanceMapData: BalanceMap) => {
+          const walletsWithBalances: DeterministicWalletData[] = wallets.map((wallet) => {
+            const balance = balanceMapData[wallet.address] || 0;
+            return {
+              ...wallet,
+              value: balance
+            };
+          });
+          setRequestingBalanceCheck(false);
+          setWallets(walletsWithBalances);
+        }
+      );
     } catch (err) {
       console.error('getBaseBalance err ', err);
     }
@@ -359,13 +361,17 @@ export function DeterministicWalletsClass({
         {!wallet.value ? (
           <Spinner />
         ) : (
-          `${parseFloat(fromWei(wallet.value, 'ether')).toFixed(4)} ${ticker}`
+          `${bigify(fromWei(wallet.value, 'ether')).toFixed(4)} ${ticker}`
         )}
       </div>,
-      <LinkOut
-        key="wallet-row-3"
-        link={buildAddressUrl(network.blockExplorer, wallet.address as TAddress)}
-      />
+      <Box key="wallet-row-3" display={'inline-flex'} alignItems={'center'}>
+        <LinkApp
+          href={buildAddressUrl(network.blockExplorer, wallet.address as TAddress)}
+          isExternal={true}
+        >
+          <Icon type="link-out" width="1em" />
+        </LinkApp>
+      </Box>
     ];
   };
 
@@ -383,9 +389,9 @@ export function DeterministicWalletsClass({
         <SDropdown>
           <label>
             {translate('DPATH')}{' '}
-            <NewTabLink href={HELP_ARTICLE.DPATH}>
-              <img src={questionSVG} />
-            </NewTabLink>
+            <LinkApp href={HELP_ARTICLE.DPATH} isExternal={true}>
+              <img width="16px" src={questionSVG} />
+            </LinkApp>
           </label>
           <Selector
             value={currentDPath}
@@ -393,7 +399,6 @@ export function DeterministicWalletsClass({
             options={dPaths.concat([customDPath])}
             optionComponent={DPathOption}
             valueComponent={({ value }) => <DPathOption data={value} />}
-            clearable={false}
             searchable={false}
           />
         </SDropdown>
@@ -440,7 +445,7 @@ export function DeterministicWalletsClass({
           <img src={nextIcon} onClick={nextPage} />
         </Nav>
         <ButtonsGroup>
-          <CancelButton onClick={onCancel} inverted={true}>
+          <CancelButton onClick={onCancel} colorScheme={'inverted'}>
             {translate('CANCEL_ACTION')}
           </CancelButton>
           <Button onClick={handleConfirmAddress} disabled={!selectedAddress}>
