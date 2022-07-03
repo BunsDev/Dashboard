@@ -28,7 +28,7 @@ jobs:
           node-version: '${{ steps.nvm.outputs.NVMRC }}'
 
       - name: Install Dependencies
-        run: yarn install
+        run: yarn install --frozen-lockfile
 
       - name: Set outputs
         id: vars
@@ -37,8 +37,6 @@ jobs:
       - name: yarn build
         run: yarn build
         env:
-          SEGMENT_WRITE_KEY: ${{ secrets.SEGMENT_WRITE_KEY }}
-          ANALYTICS_API_URL: ${{ secrets.ANALYTICS_API_URL }}
           COMMIT_HASH: ${{ steps.vars.outputs.sha }}
 
       - name: Zip standalone build folder

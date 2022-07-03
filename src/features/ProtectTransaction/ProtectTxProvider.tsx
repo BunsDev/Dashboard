@@ -1,4 +1,4 @@
-import React, { createContext, useCallback, useContext, useEffect, useRef, useState } from 'react';
+import { createContext, FC, useCallback, useEffect, useRef, useState } from 'react';
 
 import BigNumber from 'bignumber.js';
 
@@ -11,7 +11,8 @@ import {
 } from '@services/ApiService';
 import { NansenService, NansenServiceEntry } from '@services/ApiService/Nansen';
 import { useFeatureFlags } from '@services/FeatureFlag';
-import { getAssetByUUID, StoreContext, useAssets } from '@services/Store';
+import { getAssetByUUID, useAssets } from '@services/Store';
+import { getIsMyCryptoMember, useSelector } from '@store';
 import { Asset, IFormikFields, ITxReceipt, Network, TAddress, WalletId } from '@types';
 
 import { PTXReport } from './types';
@@ -80,8 +81,8 @@ export const protectTxProviderInitialState: ProtectTxState = {
 
 export const ProtectTxContext = createContext({} as ProtectTxContext);
 
-const ProtectTxProvider: React.FC = ({ children }) => {
-  const { isMyCryptoMember } = useContext(StoreContext);
+const ProtectTxProvider: FC = ({ children }) => {
+  const isMyCryptoMember = useSelector(getIsMyCryptoMember);
   // FREE FOR NOW
   const isPTXFree = isMyCryptoMember || true;
   const numOfSteps = isPTXFree ? 2 : 3;
@@ -95,8 +96,8 @@ const ProtectTxProvider: React.FC = ({ children }) => {
 
   const handleTransactionReport = useCallback(
     async (receiverAddress?: string, n?: Network): Promise<void> => {
-      const address = receiverAddress || state.receiverAddress;
-      const network = n || state.network;
+      const address = receiverAddress ?? state.receiverAddress;
+      const network = n ?? state.network;
       if (!address) return Promise.reject();
 
       const [
@@ -111,13 +112,17 @@ const ProtectTxProvider: React.FC = ({ children }) => {
         EtherscanService.instance.getTransactions(address, network!.id).catch((e) => e)
       ]);
 
-      const nansenAddressReport = (() => {
-        if (nansenAddressReportResponse instanceof Error) {
+      const nansenAddressReport: NansenServiceEntry | null = (() => {
+        if (
+          nansenAddressReportResponse instanceof Error ||
+          !nansenAddressReportResponse ||
+          nansenAddressReportResponse?.error
+        ) {
           return null;
-        } else if (nansenAddressReportResponse.page.length === 0) {
-          return { address, label: [] };
+        } else if (nansenAddressReportResponse.result.labels.length === 0) {
+          return { labels: [] };
         }
-        return nansenAddressReportResponse.page[0];
+        return nansenAddressReportResponse.result;
       })();
 
       const etherscanBalanceReport =
@@ -270,7 +275,7 @@ const ProtectTxProvider: React.FC = ({ children }) => {
       etherscanLastTokenTxReport,
       etherscanBalanceReport
     } = state;
-    const labels = nansenAddressReport ? nansenAddressReport.label : null;
+    const labels = nansenAddressReport ? nansenAddressReport.labels : null;
     const status = labels ? getNansenReportType(labels) : null;
     const lastTx = getLastTx(etherscanLastTxReport, etherscanLastTokenTxReport, address);
     const balance = getBalance(etherscanBalanceReport);

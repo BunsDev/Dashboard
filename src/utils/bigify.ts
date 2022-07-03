@@ -3,10 +3,9 @@ import BigNumber from 'bignumber.js';
 import BN from 'bn.js';
 
 import { DEFAULT_ASSET_DECIMAL } from '@config';
+import { BigifySupported } from '@types';
 
-export type Bigish = BigNumber;
-
-export const bigify = (v: BigNumber.Value | BigNumber | BigNumberish | bigint | BN): BigNumber => {
+export const bigify = (v: BigifySupported): BigNumber => {
   BigNumber.config({ DECIMAL_PLACES: DEFAULT_ASSET_DECIMAL, EXPONENTIAL_AT: 1e9 });
   if (BigNumberish.isBigNumber(v) && 'toHexString' in v) {
     return new BigNumber(v.toHexString());
@@ -32,3 +31,7 @@ export const isBigish = (v: any): boolean => {
     return false;
   }
 };
+
+export const hasBalance = (
+  balance: BigNumber.Value | BigNumber | BigNumberish | bigint | BN | undefined
+) => (balance ? !bigify(balance).isZero() : false);

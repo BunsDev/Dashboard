@@ -1,17 +1,24 @@
 import { BigNumber as EthersBigNumber } from '@ethersproject/bignumber';
-import { UnsignedTransaction } from '@ethersproject/transactions';
+import { TransactionRequest } from '@ethersproject/providers';
 import { formatEther } from '@ethersproject/units';
 import BigNumber from 'bignumber.js';
 import { addHexPrefix } from 'ethereumjs-util';
 
 import { DEFAULT_ASSET_DECIMAL } from '@config';
-import { ITxGasLimit, ITxGasPrice, ITxNonce, ITxObject, ITxValue } from '@types';
+import {
+  BigifySupported,
+  Bigish,
+  ITxGasLimit,
+  ITxGasPrice,
+  ITxNonce,
+  ITxObject,
+  ITxValue
+} from '@types';
 
-import { bigify, Bigish } from './bigify';
-import { hexEncodeQuantity } from './hexEncode';
+import { bigify } from './bigify';
 import { fromWei, gasPriceToBase, toTokenBase, toWei, Wei } from './units';
 
-export const makeTransaction = (t: ITxObject): UnsignedTransaction => {
+export const makeTransaction = (t: ITxObject): TransactionRequest => {
   // Hardware wallets need `from` param excluded
   const { from, ...tx } = t;
   return { ...tx, nonce: new BigNumber(t.nonce, 10).toNumber() };
@@ -23,11 +30,11 @@ export const inputGasPriceToHex = (
 ): ITxGasPrice /* Converts to wei from gwei */ =>
   addHexPrefix(gasPriceToBase(gasPriceGwei).toString(16)) as ITxGasPrice;
 
-export const inputGasLimitToHex = (gasLimit: string | Bigish): ITxGasLimit =>
+export const inputGasLimitToHex = (gasLimit: string | BigifySupported): ITxGasLimit =>
   addHexPrefix(bigify(gasLimit).toString(16)) as ITxGasLimit;
 
 export const inputValueToHex = (valueEther: string): ITxValue =>
-  hexEncodeQuantity(toTokenBase(valueEther, DEFAULT_ASSET_DECIMAL)) as ITxValue;
+  addHexPrefix(toTokenBase(valueEther, DEFAULT_ASSET_DECIMAL).toString(16)) as ITxValue;
 
 export const inputNonceToHex = (nonce: string): ITxNonce =>
   addHexPrefix(bigify(nonce).toString(16)) as ITxNonce;
@@ -43,13 +50,13 @@ export const hexWeiToString = (hexWeiValue: string): string => Wei(hexWeiValue).
 
 /* region:start BigNum to User Viewable */
 export const bigNumGasPriceToViewableGwei = (
-  gasPriceWeiBigNum: Bigish | string
+  gasPriceWeiBigNum: BigifySupported | string
 ): string /* Converts to wei from gwei */ =>
   fromWei(toWei(bigify(gasPriceWeiBigNum).toString(), 0), 'gwei');
 
 export const bigNumGasLimitToViewable = (gasLimitBigNum: Bigish | string): string =>
   bigify(gasLimitBigNum).toString();
 
-export const bigNumValueToViewableEther = (valueWeiBigNum: Bigish | string): string =>
+export const bigNumValueToViewableEther = (valueWeiBigNum: BigifySupported | string): string =>
   formatEther(EthersBigNumber.from(valueWeiBigNum.toString()));
 /* region:end BigNum to User Viewable */

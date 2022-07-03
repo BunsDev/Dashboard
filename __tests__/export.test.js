@@ -44,11 +44,11 @@ test('Can export AppState to file', async (t) => {
     });
 
   // Assert the json is displayed in a code block
-  await t.expect(getByTestId('export-json-display')).ok();
+  await t.expect(getByTestId('export-json-display').exists).ok();
 
   // Download file
   const downloadBtn = getByTestId('export-json-link'); // Button is inside link, so to acess attr we use data-testid
-  await t.expect(downloadBtn).ok();
+  await t.expect(downloadBtn.exists).ok();
   await t.click(downloadBtn);
 
   // Check for file download every x seconds and assert it actual contents match fixture
@@ -65,9 +65,16 @@ test('Can export AppState to file', async (t) => {
     'assets',
     0 // First asset in asset list.
   ]);
+
+  // analyticsUserID is a dynamic value.
+  // remove it before we assert equality.
+  const removeKeysFromAccountSettings = omit(['analyticsUserID']);
+  const accountSettingsLens = lensPath(['settings']);
+
   const omitDynamicValues = pipe(
-    omit(['mtime']),
-    set(accountAssetsLens, removeKeysFromAccountAsset)
+    omit(['mtime', 'promoPoaps', 'notifications', 'connections', 'claims']),
+    set(accountAssetsLens, removeKeysFromAccountAsset),
+    set(accountSettingsLens, removeKeysFromAccountSettings)
   );
 
   const actual = omitDynamicValues(JSON.parse(readFileSync(filePath)));

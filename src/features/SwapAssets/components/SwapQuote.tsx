@@ -1,5 +1,3 @@
-import React from 'react';
-
 import {
   Amount,
   Body,
@@ -12,7 +10,7 @@ import {
   Tooltip
 } from '@components';
 import { getFiat } from '@config/fiats';
-import { COLORS, SPACING } from '@theme';
+import { SPACING } from '@theme';
 import { translateRaw } from '@translations';
 import { Asset, ISettings, ISwapAsset } from '@types';
 import { bigify, convertToFiat } from '@utils';
@@ -55,7 +53,7 @@ export const SwapQuote = ({
       </Heading>
       <LinkApp href="#" variant="opacityLink">
         <Box variant="rowAlign" onClick={() => handleRefreshQuote()}>
-          <Icon type="refresh" width="16px" />
+          <Icon type="refresh" width="16px" color="BLUE_BRIGHT" />
           <Text ml={SPACING.XS} mb={0}>
             {translateRaw('GET_NEW_QUOTE')}
           </Text>
@@ -68,10 +66,9 @@ export const SwapQuote = ({
       </Box>
       <Amount
         style={{ textDecoration: isExpired ? 'line-through' : 'none' }}
-        fiatColor={COLORS.BLUE_SKY}
-        assetValue={`${bigify(fromAmount).toFixed(6)} ${fromAsset.ticker} = ${bigify(
-          toAmount
-        ).toFixed(6)} ${toAsset.ticker}`}
+        text={`${bigify(fromAmount).toFixed(6)} ${fromAsset.ticker} = ${bigify(toAmount).toFixed(
+          6
+        )} ${toAsset.ticker}`}
         fiat={{
           symbol: getFiat(settings).symbol,
           ticker: getFiat(settings).ticker,
@@ -85,8 +82,7 @@ export const SwapQuote = ({
       </Box>
       <Amount
         style={{ textDecoration: isExpired ? 'line-through' : 'none' }}
-        fiatColor={COLORS.BLUE_SKY}
-        assetValue={`1 ${fromAsset.ticker} = ${bigify(exchangeRate).toFixed(6)} ${toAsset.ticker}`}
+        text={`1 ${fromAsset.ticker} = ${bigify(exchangeRate).toFixed(6)} ${toAsset.ticker}`}
         fiat={{
           symbol: getFiat(settings).symbol,
           ticker: getFiat(settings).ticker,
@@ -96,12 +92,14 @@ export const SwapQuote = ({
     </Box>
     <Box variant="rowAlign" justifyContent="space-between" mb="3">
       <Box>
-        {translateRaw('MAX_TX_FEE')} <Tooltip tooltip={translateRaw('SWAP_TX_FEE_TOOLTIP')} />
+        {translateRaw('ESTIMATED_COST')} <Tooltip tooltip={translateRaw('SWAP_TX_FEE_TOOLTIP')} />
       </Box>
       <Amount
         style={{ textDecoration: isExpired ? 'line-through' : 'none' }}
-        fiatColor={COLORS.BLUE_SKY}
-        assetValue={`${estimatedGasFee} ${baseAsset.ticker}`}
+        asset={{
+          amount: estimatedGasFee,
+          ticker: baseAsset.ticker
+        }}
         fiat={{
           symbol: getFiat(settings).symbol,
           ticker: getFiat(settings).ticker,

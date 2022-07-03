@@ -1,4 +1,4 @@
-import React from 'react';
+import { Fragment } from 'react';
 
 import Markdown from 'react-markdown';
 
@@ -8,16 +8,19 @@ interface Props {
   source: string;
 }
 
+//@ts-expect-error bad typing on props
+const Link = (props) => <LinkApp isExternal={true} {...props} />;
+
+const disallowed = ['html'];
+
+const components = {
+  a: Link,
+  p: Fragment // Remove <p> added by react-markdown.
+};
+
 const TranslateMarkdown = ({ source }: Props) => {
   return (
-    <Markdown
-      disallowedTypes={['html']}
-      renderers={{
-        root: React.Fragment,
-        link: (props) => <LinkApp isExternal={true} {...props} />,
-        paragraph: React.Fragment // Remove <p> added by react-markdown.
-      }}
-    >
+    <Markdown disallowedElements={disallowed} components={components}>
       {source}
     </Markdown>
   );

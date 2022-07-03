@@ -1,5 +1,3 @@
-import React from 'react';
-
 import { Button, LinkApp } from '@components';
 import { useUserActions } from '@services';
 import { ACTION_STATE, ExtendedUserAction } from '@types';
@@ -31,7 +29,7 @@ export const ActionButton = ({
   return (
     <LinkApp href={to} isExternal={external} onClick={handleClick}>
       <Button
-        disabled={userAction.state != 'default' && userAction.state === 'completed'}
+        disabled={userAction.state !== 'default' && userAction.state === 'completed'}
         fullwidth={true}
       >
         {content}

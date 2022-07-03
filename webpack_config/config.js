@@ -19,12 +19,12 @@ module.exports = {
   title: 'MyCrypto - Ethereum Wallet Manager',
   // description < 200 characters
   description:
-    'Securely manage ALL of your crypto accounts with MyCrypto. Swap, send, and buy crypto with your favorite wallets like Ledger, Metamask, and Trezor.',
-  url: 'https://beta.mycrypto.com/',
+    'Securely manage ALL of your crypto accounts with MyCrypto. Swap, send, and buy crypto with your favorite wallets like Ledger, MetaMask, and Trezor.',
+  url: 'https://app.mycrypto.com/',
   type: 'website',
   // img < 5MB
   // image needs to be an absolute URL
-  img: 'https://beta.mycrypto.com/link-preview.png',
+  img: 'https://app.mycrypto.com/link-preview.png',
   twitter: {
     creator: '@MyCrypto'
   },

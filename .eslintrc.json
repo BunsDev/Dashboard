@@ -3,7 +3,9 @@
   "parser": "@typescript-eslint/parser",
   "extends": ["eslint:recommended", "eslint-config-prettier", "plugin:eslint-plugin-import/errors"],
   "plugins": ["eslint-plugin-react", "eslint-plugin-import"],
+  "ignorePatterns": ["**/static/matomo.js", "hardhat.config.ts", "jest_config", "node-scripts"],
   "rules": {
+    "eqeqeq": ["error", "always", { "null": "ignore" }],
     "import/first": "error",
     "import/newline-after-import": "error",
     "import/no-deprecated": "error",
@@ -87,9 +89,11 @@
             "argsIgnorePattern": "^_"
           }
         ],
+        "@typescript-eslint/prefer-nullish-coalescing": "error",
         "react/display-name": "off",
         "react/no-unescaped-entities": "off",
         "react/prop-types": "off",
+        "react/react-in-jsx-scope": "off",
         "react-hooks/exhaustive-deps": "off",
         // Configure Jest to recognise react-saga-test-plan assertions
         // https://github.com/jfairbank/redux-saga-test-plan/issues/329
@@ -106,6 +110,7 @@
         }
       },
       "parserOptions": {
+        "project": "./tsconfig.json",
         "ecmaFeatures": {
           "jsx": true
         }

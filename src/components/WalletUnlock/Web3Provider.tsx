@@ -1,4 +1,4 @@
-import React, { FC, useCallback, useState } from 'react';
+import { FC, useCallback, useState } from 'react';
 
 import styled from 'styled-components';
 
@@ -125,8 +125,8 @@ export const Web3UnlockUI = ({
   web3ProviderSettings,
   unlockWallet
 }: Web3UnlockUIProps) => (
-  <Box p="2.5em">
-    <Heading fontSize="32px" textAlign="center" fontWeight="bold">
+  <Box>
+    <Heading fontSize="32px" textAlign="center" fontWeight="bold" mt="0">
       {isDefault
         ? translate('ADD_ACCOUNT_WEB3_TITLE_DEFAULT', transProps)
         : translate('ADD_ACCOUNT_WEB3_TITLE', transProps)}
@@ -148,10 +148,11 @@ export const Web3UnlockUI = ({
 
       {web3Unlocked === false && (
         <>
-          {web3UnlockError && web3UnlockError.error && (
+          {web3UnlockError && web3UnlockError.error && web3UnlockError.message.length > 0 ? (
             <InlineMessage>{web3UnlockError.message}</InlineMessage>
+          ) : (
+            <InlineMessage>{translate('WEB3_ONUNLOCK_NOT_FOUND_ERROR', transProps)}</InlineMessage>
           )}
-          <InlineMessage>{translate('WEB3_ONUNLOCK_NOT_FOUND_ERROR', transProps)}</InlineMessage>
         </>
       )}
     </Box>

@@ -1,4 +1,4 @@
-import React, { useContext, useEffect, useState } from 'react';
+import { useEffect, useState } from 'react';
 
 import { Heading, Input, Tooltip } from '@mycrypto/ui';
 import { Field, FieldProps, Form, Formik, FormikProps } from 'formik';
@@ -19,7 +19,8 @@ import {
 } from '@components';
 import { ROUTE_PATHS } from '@config';
 import { validateAmountField } from '@features/SendAssets/components';
-import { getNetworkById, StoreContext, useAssets } from '@services/Store';
+import { getNetworkById, useAssets } from '@services/Store';
+import { getDefaultAccount, getStoreAccounts, selectNetworks, useSelector } from '@store';
 import translate, { translateRaw } from '@translations';
 import { BusyBottomConfig, IAccount as IIAccount } from '@types';
 import {
@@ -104,8 +105,9 @@ const CodeHeading = styled(Heading)`
 `;
 
 export function RequestAssets({ history }: RouteComponentProps) {
-  const { accounts, getDefaultAccount, networks } = useContext(StoreContext);
-  const defaultAccount = getDefaultAccount(true);
+  const accounts = useSelector(getStoreAccounts);
+  const networks = useSelector(selectNetworks);
+  const defaultAccount = useSelector(getDefaultAccount(true));
   const { assets } = useAssets();
   const [networkId, setNetworkId] = useState(defaultAccount!.networkId);
   const network = getNetworkById(networkId, networks);

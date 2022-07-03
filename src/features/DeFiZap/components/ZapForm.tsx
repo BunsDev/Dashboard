@@ -1,5 +1,3 @@
-import React, { useContext } from 'react';
-
 import { parseEther } from '@ethersproject/units';
 import { Field, FieldProps, Form, Formik } from 'formik';
 import isEmpty from 'lodash/isEmpty';
@@ -23,8 +21,7 @@ import { getNonce } from '@services/EthService';
 import { getAccountBalance, useAssets } from '@services/Store';
 import { isEthereumAccount } from '@services/Store/Account/helpers';
 import { useNetworks } from '@services/Store/Network';
-import { StoreContext } from '@services/Store/StoreProvider';
-import { AppState, getIsDemoMode } from '@store';
+import { AppState, getDefaultAccount, getIsDemoMode, getStoreAccounts, useSelector } from '@store';
 import { SPACING } from '@theme';
 import translate, { translateRaw } from '@translations';
 import { Asset, IAccount, ISimpleTxFormFull, Network, StoreAccount } from '@types';
@@ -74,8 +71,8 @@ const DeFiZapLogoContainer = styled.div`
 `;
 
 const ZapForm = ({ onComplete, zapSelected, isDemoMode }: Props) => {
-  const { accounts, getDefaultAccount } = useContext(StoreContext);
-  const defaultAccount = getDefaultAccount();
+  const accounts = useSelector(getStoreAccounts);
+  const defaultAccount = useSelector(getDefaultAccount());
   const { assets } = useAssets();
   const { networks } = useNetworks();
   const ethAsset = assets.find((asset) => asset.uuid === ETHUUID) as Asset;
@@ -112,7 +109,9 @@ export const ZapFormUI = ({
     gasPrice: '10',
     address: '',
     gasLimit: '',
-    network
+    network,
+    maxFeePerGas: '20',
+    maxPriorityFeePerGas: '1'
   };
 
   const ZapFormSchema = object().shape({

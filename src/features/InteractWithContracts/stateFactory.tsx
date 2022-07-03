@@ -2,13 +2,11 @@ import { useCallback } from 'react';
 
 import debounce from 'lodash/debounce';
 
-import { CREATION_ADDRESS } from '@config';
-import { makePendingTxReceipt } from '@helpers';
+import { CREATION_ADDRESS, DEFAULT_NETWORK } from '@config';
+import { makeBasicTxConfig, makePendingTxReceipt, makeTxFromForm, toTxReceipt } from '@helpers';
 import {
   EtherscanService,
   getGasEstimate,
-  getNetworkById,
-  getResolvedENSAddress,
   isValidETHAddress,
   ProviderHandler,
   useAccounts,
@@ -21,6 +19,7 @@ import { translateRaw } from '@translations';
 import {
   Contract,
   ExtendedContract,
+  ISimpleTxForm,
   ITxHash,
   ITxStatus,
   ITxType,
@@ -29,14 +28,10 @@ import {
   TAddress,
   TUuid
 } from '@types';
-import { addHexPrefix, bigify, isSameAddress, isWeb3Wallet, TUseStateReducerFactory } from '@utils';
+import { inputGasLimitToHex, isSameAddress, isWeb3Wallet, TUseStateReducerFactory } from '@utils';
 
 import { CUSTOM_CONTRACT_ADDRESS, customContract } from './constants';
-import {
-  constructGasCallProps,
-  makeContractInteractionTxConfig,
-  reduceInputParams
-} from './helpers';
+import { constructGasCallProps, reduceInputParams } from './helpers';
 import { ABIItem, InteractWithContractState } from './types';
 
 const interactWithContractsInitialState = {
@@ -52,11 +47,9 @@ const interactWithContractsInitialState = {
   submitedFunction: undefined,
   data: undefined,
   account: undefined,
-  rawTransaction: {
-    gasPrice: '0xee6b2800',
-    gasLimit: 21000,
-    nonce: 0
-  },
+  gasPrice: '0xee6b2800',
+  gasLimit: '21000',
+  nonce: '0',
   txConfig: undefined,
   txReceipt: undefined
 };
@@ -66,13 +59,15 @@ const InteractWithContractsFactory: TUseStateReducerFactory<InteractWithContract
   setState
 }) => {
   const { getContractsByNetwork, createContract, deleteContract } = useContracts();
-  const { networks } = useNetworks();
+  const { getNetworkById } = useNetworks();
   const { addTxToAccount } = useAccounts();
+  const ethNetwork = getNetworkById(DEFAULT_NETWORK);
 
   const handleNetworkSelected = (networkId: NetworkId) => {
     setState((prevState: InteractWithContractState) => ({
       ...prevState,
-      network: getNetworkById(networkId, networks),
+      account: undefined,
+      network: getNetworkById(networkId),
       contract: undefined,
       contractAddress: '',
       addressOrDomainInput: '',
@@ -148,8 +143,8 @@ const InteractWithContractsFactory: TUseStateReducerFactory<InteractWithContract
       resolvingDomain: true
     }));
 
-    const resolvedAddress =
-      (await getResolvedENSAddress(state.network, domain)) || CREATION_ADDRESS;
+    const provider = new ProviderHandler(ethNetwork);
+    const resolvedAddress = (await provider.resolveName(domain, state.network)) ?? CREATION_ADDRESS;
 
     setState((prevState: InteractWithContractState) => ({
       ...prevState,
@@ -270,46 +265,59 @@ const InteractWithContractsFactory: TUseStateReducerFactory<InteractWithContract
     return decodeOutput(result, network.chainId);
   };
 
-  const handleInteractionFormWriteSubmit = async (submitedFunction: ABIItem, after: () => void) => {
-    const { contractAddress, account, rawTransaction } = state;
+  const handleInteractionFormWriteSubmit = async (
+    submittedFunction: ABIItem,
+    after: () => void
+  ) => {
+    const {
+      contractAddress,
+      account,
+      nonce,
+      gasLimit,
+      gasPrice,
+      maxFeePerGas,
+      maxPriorityFeePerGas
+    } = state;
 
     if (!account) {
       throw new Error(translateRaw('INTERACT_WRITE_ERROR_NO_ACCOUNT'));
     }
 
-    const hexlify = (str: string) => addHexPrefix(bigify(str).toString(16));
-
     const { network } = account;
-    const { gasPrice, gasLimit, nonce } = rawTransaction;
-    const transaction: any = Object.assign(
-      constructGasCallProps(contractAddress, submitedFunction, account),
+
+    const { value, data } = constructGasCallProps(contractAddress, submittedFunction, account);
+
+    const { gasLimit: unusedGasLimit, ...transaction } = makeTxFromForm(
       {
-        gasPrice: hexlify(gasPrice),
-        chainId: network.chainId,
-        nonce: hexlify(nonce)
-      }
+        gasPrice,
+        gasLimit,
+        maxFeePerGas,
+        maxPriorityFeePerGas,
+        nonce,
+        account,
+        address: contractAddress,
+        network
+      },
+      value!,
+      data!
     );
+
     // check if transaction fails everytime
     await getGasEstimate(network, transaction);
-    transaction.gasLimit = hexlify(gasLimit);
-    delete transaction.from;
 
-    const txConfig = makeContractInteractionTxConfig(
-      transaction,
-      account,
-      submitedFunction.payAmount
-    );
+    const tx = { ...transaction, gasLimit: inputGasLimitToHex(gasLimit) };
+
+    const txConfig = makeBasicTxConfig(tx, account, submittedFunction.payAmount);
 
     setState((prevState: InteractWithContractState) => ({
       ...prevState,
-      rawTransaction: transaction,
       txConfig
     }));
 
     after();
   };
 
-  const handleAccountSelected = (account: StoreAccount | undefined) => {
+  const handleAccountSelected = (account?: StoreAccount) => {
     setState((prevState: InteractWithContractState) => ({
       ...prevState,
       account
@@ -325,14 +333,14 @@ const InteractWithContractsFactory: TUseStateReducerFactory<InteractWithContract
 
     if (isWeb3Wallet(account.wallet)) {
       const txReceipt =
-        signResponse && signResponse.hash ? signResponse : { ...txConfig, hash: signResponse };
+        signResponse && signResponse.hash
+          ? signResponse
+          : toTxReceipt(signResponse, ITxStatus.PENDING)(ITxType.CONTRACT_INTERACT, txConfig);
       addTxToAccount(state.txConfig.senderAccount, {
         ...txReceipt,
         to: state.txConfig.receiverAddress,
         from: state.txConfig.senderAccount.address,
-        amount: state.txConfig.amount,
-        txType: ITxType.CONTRACT_INTERACT,
-        stage: ITxStatus.PENDING
+        amount: state.txConfig.amount
       });
       setState((prevState: InteractWithContractState) => ({
         ...prevState,
@@ -361,10 +369,26 @@ const InteractWithContractsFactory: TUseStateReducerFactory<InteractWithContract
     }
   };
 
-  const handleGasSelectorChange = (payload: any) => {
+  const handleGasSelectorChange = (
+    payload: Pick<ISimpleTxForm, 'gasPrice' | 'maxFeePerGas' | 'maxPriorityFeePerGas'>
+  ) => {
     setState((prevState: InteractWithContractState) => ({
       ...prevState,
-      rawTransaction: { ...prevState.rawTransaction, ...payload }
+      ...payload
+    }));
+  };
+
+  const handleGasLimitChange = (gasLimit: string) => {
+    setState((prevState: InteractWithContractState) => ({
+      ...prevState,
+      gasLimit
+    }));
+  };
+
+  const handleNonceChange = (nonce: string) => {
+    setState((prevState: InteractWithContractState) => ({
+      ...prevState,
+      nonce
     }));
   };
 
@@ -383,6 +407,8 @@ const InteractWithContractsFactory: TUseStateReducerFactory<InteractWithContract
     handleTxSigned,
     handleGasSelectorChange,
     handleDeleteContract,
+    handleGasLimitChange,
+    handleNonceChange,
     interactWithContractsState: state
   };
 };

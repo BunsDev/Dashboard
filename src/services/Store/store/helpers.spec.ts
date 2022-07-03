@@ -1,14 +1,11 @@
-import { fAccount, fAccounts, fAssets, fLocalStorage, fNetworks, fRates } from '@fixtures';
-import { deMarshallState, marshallState } from '@services/Store/DataManager/utils';
-import { IProvidersMappings, LocalStorage, LSKeys, NodeOptions, StoreAsset, TUuid } from '@types';
+import { fAccount, fAccounts, fAssets, fNetworks } from '@fixtures';
+import { IProvidersMappings, NodeOptions, StoreAsset, TUuid } from '@types';
 
 import {
   buildCoinGeckoIdMapping,
-  canImport,
   destructureCoinGeckoIds,
   mergeAssets,
   mergeNetworks,
-  migrateConfig,
   serializeAccount,
   serializeNotification
 } from './helpers';
@@ -20,7 +17,6 @@ describe('serializeAccount()', () => {
         balance: '1989726000000000000',
         decimal: 18,
         isCustom: false,
-        mtime: 1581530607024,
         name: 'Ether',
         networkId: 'Ethereum',
         ticker: 'ETH',
@@ -32,7 +28,6 @@ describe('serializeAccount()', () => {
         contractAddress: '0x1985365e9f78359a9B6AD760e32412f4a445E862',
         decimal: 18,
         isCustom: false,
-        mtime: 1581530607024,
         name: 'REPv1',
         networkId: 'Ethereum',
         ticker: 'REPv1',
@@ -104,7 +99,7 @@ describe('mergeNetworks', () => {
 
   test('it correctly merges when custom nodes are present', () => {
     const nodeName = 'MyNode';
-    const nodes = [...fNetworks[0].nodes, { name: nodeName } as NodeOptions];
+    const nodes = [...fNetworks[0].nodes, { name: nodeName, isCustom: true } as NodeOptions];
     const actual = mergeNetworks(
       [{ ...fNetworks[0], nodes, selectedNode: nodeName }, fNetworks[1]],
       fNetworks
@@ -128,6 +123,12 @@ describe('mergeNetworks', () => {
     const actual = mergeNetworks([fNetworks[0]], [{ ...fNetworks[0], nodes }]);
     expect(actual).toEqual([{ ...fNetworks[0], nodes }]);
   });
+
+  test('it correctly merges when nodes have been deleted', () => {
+    const [, ...nodes] = fNetworks[0].nodes;
+    const actual = mergeNetworks([fNetworks[0]], [{ ...fNetworks[0], nodes }]);
+    expect(actual).toEqual([{ ...fNetworks[0], nodes }]);
+  });
 });
 
 describe('mergeAssets', () => {
@@ -141,49 +142,6 @@ describe('mergeAssets', () => {
     const actual = mergeAssets([detailedAsset], fAssets);
     const [, ...rest] = fAssets;
     expect(actual).toEqual([detailedAsset, ...rest]);
-  });
-});
-
-describe('canImport()', () => {
-  const persistable = deMarshallState(marshallState(fLocalStorage));
-  it('returns true with valid import file', () => {
-    const actual = canImport(fLocalStorage, persistable);
-    expect(actual).toBe(true);
-  });
-
-  it('returns false with mismatching versions', () => {
-    const validate = () => canImport({ ...fLocalStorage, version: 'v0.0' }, persistable);
-    expect(validate()).toBe(false);
-  });
-
-  it('returns false with missing keys', () => {
-    const { accounts, ...lsWithoutAccounts } = fLocalStorage;
-    const actual = canImport(lsWithoutAccounts, persistable);
-    expect(actual).toBe(false);
-  });
-});
-
-describe('migrateConfig()', () => {
-  it('Migrate rates outside of settings', () => {
-    const toMigrate = {
-      [LSKeys.SETTINGS]: {
-        rates: fRates
-      }
-    };
-    const result = migrateConfig((toMigrate as unknown) as Partial<LocalStorage>);
-
-    expect(result.rates).toEqual(toMigrate.settings.rates);
-    expect(result.settings).not.toContain(toMigrate.settings.rates);
-  });
-  it('Creates trackedAsset object if missing', () => {
-    const toMigrate = {
-      [LSKeys.SETTINGS]: {
-        rates: fRates
-      }
-    };
-    const result = migrateConfig((toMigrate as unknown) as Partial<LocalStorage>);
-
-    expect(result.trackedAssets).toEqual({});
   });
 });
 

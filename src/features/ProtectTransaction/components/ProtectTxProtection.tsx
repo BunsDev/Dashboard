@@ -1,4 +1,4 @@
-import React, { FC, useCallback, useContext, useEffect, useState } from 'react';
+import { FC, MouseEventHandler, useCallback, useContext, useEffect, useState } from 'react';
 
 import bulletIcon from 'assets/images/icn-bullet.svg';
 import BigNumber from 'bignumber.js';
@@ -10,7 +10,7 @@ import CloseIcon from '@components/icons/CloseIcon';
 import ProtectIcon from '@components/icons/ProtectIcon';
 import ProtectIconCheck from '@components/icons/ProtectIconCheck';
 import WarningIcon from '@components/icons/WarningIcon';
-import { DEFAULT_ASSET_DECIMAL } from '@config';
+import { DEFAULT_ASSET_DECIMAL, DEFAULT_NETWORK_TICKER } from '@config';
 import { getFiat } from '@config/fiats';
 import { useRates, useSettings } from '@services';
 import { BREAK_POINTS, COLORS, FONT_SIZE, LINE_HEIGHT, SPACING } from '@theme';
@@ -196,6 +196,9 @@ export const ProtectTxProtection: FC<Props> = ({ handleProtectTxSubmit }) => {
   } = useContext(ProtectTxContext);
 
   useEffect(() => {
+    if (!sendAssetsValues) {
+      return;
+    }
     const {
       account: { wallet: walletId }
     } = sendAssetsValues as { account: IAccount };
@@ -203,7 +206,10 @@ export const ProtectTxProtection: FC<Props> = ({ handleProtectTxSubmit }) => {
   }, [sendAssetsValues]);
 
   useEffect(() => {
-    const { asset } = sendAssetsValues!;
+    if (!sendAssetsValues) {
+      return;
+    }
+    const { asset } = sendAssetsValues;
     const rate = getAssetRate(asset);
 
     const { amount, fee } = getProtectTxFee(sendAssetsValues!, rate);
@@ -211,8 +217,8 @@ export const ProtectTxProtection: FC<Props> = ({ handleProtectTxSubmit }) => {
     setFeeAmount({ amount, fee, rate: rate ? rate : null });
   }, [sendAssetsValues]);
 
-  const onProtectMyTransactionClick = useCallback(
-    async (e: React.MouseEvent<HTMLButtonElement, MouseEvent>) => {
+  const onProtectMyTransactionClick: MouseEventHandler<HTMLButtonElement> = useCallback(
+    async (e) => {
       e.preventDefault();
       e.stopPropagation();
 
@@ -231,8 +237,8 @@ export const ProtectTxProtection: FC<Props> = ({ handleProtectTxSubmit }) => {
     [feeAmount, setIsLoading]
   );
 
-  const onProtectMyTransactionCancelClick = useCallback(
-    (e: React.MouseEvent<HTMLButtonElement & SVGSVGElement, MouseEvent>) => {
+  const onProtectMyTransactionCancelClick: MouseEventHandler<HTMLButtonElement> = useCallback(
+    (e) => {
       e.preventDefault();
 
       if (showHideProtectTx) {
@@ -267,8 +273,8 @@ export interface UIProps {
   isPTXFree: boolean;
   isLoading: boolean;
   web3Wallet: { isWeb3Wallet: boolean; name: string | null };
-  onCancel(e: React.MouseEvent<HTMLButtonElement & SVGSVGElement, MouseEvent>): void;
-  onProtect(e: React.MouseEvent<HTMLButtonElement & SVGSVGElement, MouseEvent>): void;
+  onCancel: MouseEventHandler<HTMLButtonElement & SVGSVGElement>;
+  onProtect: MouseEventHandler<HTMLButtonElement & SVGSVGElement>;
 }
 
 export const ProtectTxProtectionUI = ({
@@ -281,11 +287,6 @@ export const ProtectTxProtectionUI = ({
   onCancel,
   onProtect
 }: UIProps) => {
-  const getAssetValue = (amount: BigNumber | null) => {
-    if (amount === null) return '--';
-    return `${amount.toFixed(6)} ETH`;
-  };
-
   const getFiatValue = useCallback(
     (amount: BigNumber | null) => {
       if (amount === null || feeAmount.rate === null) return '--';
@@ -353,7 +354,10 @@ export const ProtectTxProtectionUI = ({
             <ProtectIconCheck size="sm" />
             <p className="fee-label">{translateRaw('PROTECTED_TX_PRICE')}</p>
             <Amount
-              assetValue={getAssetValue(feeAmount.amount)}
+              asset={{
+                amount: feeAmount?.fee?.toFixed(6) ?? '--',
+                ticker: DEFAULT_NETWORK_TICKER
+              }}
               fiat={{
                 symbol: fiat.symbol,
                 amount: getFiatValue(feeAmount.amount),
@@ -365,7 +369,10 @@ export const ProtectTxProtectionUI = ({
             <img src={feeIcon} alt="Fee" />
             <p className="fee-label">{translateRaw('PROTECTED_TX_FEE')}</p>
             <Amount
-              assetValue={getAssetValue(feeAmount.fee)}
+              asset={{
+                amount: feeAmount?.fee?.toFixed(6) ?? '---',
+                ticker: DEFAULT_NETWORK_TICKER
+              }}
               fiat={{
                 symbol: fiat.symbol,
                 amount: getFiatValue(feeAmount.fee),

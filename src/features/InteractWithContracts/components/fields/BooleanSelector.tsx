@@ -1,5 +1,3 @@
-import React from 'react';
-
 import styled from 'styled-components';
 
 import { Selector } from '@components';
@@ -28,7 +26,7 @@ interface Props {
 
 const ContractDropdownItem = ({
   option,
-  paddingLeft,
+  paddingLeft = '0',
   onSelect
 }: {
   option: { name: string };
@@ -36,7 +34,7 @@ const ContractDropdownItem = ({
   onSelect?(option: { name: string }): void;
 }) => (
   <div
-    style={{ padding: `12px 15px 12px ${paddingLeft || '0px'}` }}
+    style={{ padding: `12px 15px 12px ${paddingLeft}` }}
     onClick={() => onSelect && onSelect(option)}
   >
     {option.name}

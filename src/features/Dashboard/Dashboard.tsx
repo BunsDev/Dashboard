@@ -1,12 +1,11 @@
-import React, { useContext } from 'react';
-
 import { Heading } from '@mycrypto/ui';
 import styled from 'styled-components';
 
 import { AccountList, ActionPanel, Desktop, Mobile } from '@components';
 import BannerAd from '@components/BannerAd/BannerAd';
 import { useFeatureFlags } from '@services';
-import { StoreContext, useAccounts } from '@services/Store';
+import { useAccounts } from '@services/Store';
+import { getIsMyCryptoMember, selectCurrentAccounts, useSelector } from '@store';
 import { translateRaw } from '@translations';
 import { useScreenSize } from '@utils';
 
@@ -14,6 +13,7 @@ import { DashboardZapCTA } from '../DeFiZap';
 import { NotificationsPanel } from '../NotificationsPanel';
 import {
   ActionTile,
+  DashboardGas,
   MembershipPanel,
   RecentTransactionList,
   TokenPanel,
@@ -35,8 +35,8 @@ const DashboardWrapper = styled.div`
 
 export default function Dashboard() {
   const { featureFlags } = useFeatureFlags();
-  const storeContextState = useContext(StoreContext);
-  const { isMyCryptoMember, currentAccounts } = storeContextState;
+  const currentAccounts = useSelector(selectCurrentAccounts);
+  const isMyCryptoMember = useSelector(getIsMyCryptoMember);
   const { accounts } = useAccounts();
   const { isMobile } = useScreenSize();
   const relevantActions = filterDashboardActions(actions, isMobile);
@@ -59,7 +59,7 @@ export default function Dashboard() {
           <div className="Dashboard-mobile-walletBreakdown">
             <WalletBreakdown />
           </div>
-          {featureFlags.MYC_MEMBERSHIP && (
+          {featureFlags.MYC_MEMBERSHIP && isMyCryptoMember && (
             <div className="Dashboard-mobile-section Dashboard-mobile-tokenList">
               <MembershipPanel />
             </div>
@@ -97,16 +97,17 @@ export default function Dashboard() {
             <Heading as="h2" className="Dashboard-desktop-top-left-heading">
               {translateRaw('YOUR_DASHBOARD')}
             </Heading>
+            <DashboardGas />
+            {featureFlags.MYC_MEMBERSHIP && isMyCryptoMember && (
+              <div className="Dashboard-desktop-top-left-token">
+                <MembershipPanel />
+              </div>
+            )}
             <div className="Dashboard-desktop-top-left-actions">
               {relevantActions.map((action) => (
                 <ActionTile key={action.title} {...action} />
               ))}
             </div>
-            {featureFlags.MYC_MEMBERSHIP && (
-              <div className="Dashboard-desktop-top-left-token">
-                <MembershipPanel />
-              </div>
-            )}
             <div className="Dashboard-desktop-top-left-tokens">
               <TokenPanel />
             </div>

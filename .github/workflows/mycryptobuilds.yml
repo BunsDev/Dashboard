@@ -77,10 +77,16 @@ jobs:
           ## Check cache based on yarn.lock hashfile
           key: ${{ runner.OS }}-build-${{ hashFiles('**/yarn.lock') }}
 
+      - name: Cache Hardhat network
+        uses: actions/cache@v2
+        with:
+          path: .cache/hardhat
+          key: ${{ runner.OS }}-build-${{ hashFiles('**/hardhat.config.ts') }}
+
       - name: Install Dependencies
         ## If no cache is found, install dependencies
         if: steps.cache.outputs.cache-hit != 'true'
-        run: yarn install
+        run: yarn install --frozen-lockfile
 
       - name: Set outputs
         id: vars
@@ -90,24 +96,18 @@ jobs:
         run: yarn build:staging
         if: github.event_name == 'pull_request'
         env:
-          SEGMENT_WRITE_KEY: ${{ secrets.SEGMENT_WRITE_KEY }}
-          ANALYTICS_API_URL: ${{ secrets.ANALYTICS_API_URL }}
           COMMIT_HASH: ${{ github.event.pull_request.head.sha }}
 
       - name: yarn build:staging
         run: yarn build:staging
         if: github.event_name == 'repository_dispatch'
         env:
-          SEGMENT_WRITE_KEY: ${{ secrets.SEGMENT_WRITE_KEY }}
-          ANALYTICS_API_URL: ${{ secrets.ANALYTICS_API_URL }}
           COMMIT_HASH: ${{ github.event.client_payload.pull_request.head.sha }}
 
       - name: yarn build:staging
         run: yarn build:staging
         if: github.event_name == 'push' && github.ref == 'refs/heads/master'
         env:
-          SEGMENT_WRITE_KEY: ${{ secrets.SEGMENT_WRITE_KEY }}
-          ANALYTICS_API_URL: ${{ secrets.ANALYTICS_API_URL }}
           COMMIT_HASH: ${{ steps.vars.outputs.sha }}
 
       - name: S3 Sync - Downloadable Branch - push
@@ -188,9 +188,9 @@ jobs:
 
       # Launch E2E tests. When in pull request it runs against the PR's mycryptobuilds url.
       - name: E2E - run
-        run: yarn test:e2e
+        run: yarn test:e2e:ci
         env:
-          E2E_PRIVATE_KEY: ${{ secrets.E2E_PRIVATE_KEY }}
+          INFURA_API_KEY: ${{ secrets.INFURA_API_KEY }}
 
       - name: Update PR status
         uses: actions/github-script@v1

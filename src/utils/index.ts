@@ -11,8 +11,6 @@ export {
   IS_STAGING,
   IS_PROD,
   USE_HASH_ROUTER,
-  SEGMENT_WRITE_KEY,
-  ANALYTICS_API_URL,
   COMMIT_HASH
 } from './environment';
 export { getFeaturedOS } from './getFeaturedOS';
@@ -42,12 +40,7 @@ export { useInterval } from './useInterval';
 export * from './useStateReducer';
 export { filterObjectOfObjects } from './filterObjectOfObjects';
 export { default as ScrollToTop } from './scrollToTop';
-export {
-  getParam,
-  constructCancelTxQuery,
-  constructSpeedUpTxQuery,
-  createQueryParamsDefaultObject
-} from './queries';
+export * from './queries';
 export { noOp } from './noOp';
 export {
   formatMnemonic,
@@ -68,11 +61,10 @@ export { withContext } from './withContext';
 export { getWeb3Config, isWeb3Wallet } from './web3';
 export { toArray } from './toArray';
 export { objToString } from './objToString';
-export { bigify, isBigish } from './bigify';
+export { bigify, hasBalance, isBigish } from './bigify';
 export { default as useScreenSize } from './useScreenSize';
 export { sanitizeDecimalSeparator } from './sanitizeDecimalSeparator';
 export { trimEllipsis } from './trimEllipsis';
-export * from './encryption';
 export { openLink } from './openLink';
 export { isSameAddress } from './isSameAddress';
 export { default as isFiatTicker } from './isFiatTicker';
@@ -93,28 +85,7 @@ export {
 } from './makeExplorer';
 export { verifySignedMessage } from './signing';
 export { stripHexPrefix, stripHexPrefixAndLower } from './stripHexPrefix';
-export {
-  Units,
-  toWei,
-  handleValues,
-  gasPriceToBase,
-  fromWei,
-  toTokenBase,
-  Wei,
-  TokenValue,
-  Address,
-  baseToConvertedUnit,
-  fromTokenBase,
-  totalTxFeeToString,
-  totalTxFeeToWei,
-  gasStringsToMaxGasNumber,
-  gasStringsToMaxGasBN,
-  convertedToBaseUnit,
-  getDecimalFromEtherUnit,
-  convertTokenBase,
-  calculateGasUsedPercentage
-} from './units';
-export { padLeftEven } from './padLeftEven';
+export * from './units';
 export { normalize } from './normalize';
 export {
   hexNonceToViewable,
@@ -129,11 +100,19 @@ export {
   bigNumGasPriceToViewableGwei,
   bigNumValueToViewableEther
 } from './makeTransaction';
-export { hexEncodeQuantity } from './hexEncode';
 export { randomElementFromArray } from './random';
 export { generateTweet } from './generateTweet';
 export { arrayToObj } from './toObject';
 export { mapAsync, filterAsync } from './asyncFilter';
-export { isValidJSON } from './isValidJSON';
 export { goBack } from './navigation';
 export { addHexPrefix } from './addHexPrefix';
+export * from './typedTx';
+export * from './hexlify';
+export { default as useTimeout } from './useTimeout';
+export { default as useMinimumWait } from './useMinimumWait';
+export * from './fileExtensions';
+export * from './nft';
+export * from './eip1559';
+export * from './currency';
+export * from './useEffectAllDepsChange';
+export * from './coinType';

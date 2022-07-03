@@ -1,3 +1,6 @@
+import { ClaimsState } from '@store/claims.slice';
+import { ConnectionsState } from '@store/connections.slice';
+import { PromoPoapsState } from '@store/promoPoaps.slice';
 import {
   Asset,
   ExtendedAsset,
@@ -28,9 +31,11 @@ export enum LSKeys {
   NETWORKS = 'networks',
   NOTIFICATIONS = 'notifications',
   SETTINGS = 'settings',
-  PASSWORD = 'password',
   NETWORK_NODES = 'networkNodes',
-  USER_ACTIONS = 'userActions'
+  USER_ACTIONS = 'userActions',
+  PROMO_POAPS = 'promoPoaps',
+  CONNECTIONS = 'connections',
+  CLAIMS = 'claims'
 }
 
 export interface LocalStorage {
@@ -46,8 +51,10 @@ export interface LocalStorage {
   readonly [LSKeys.NETWORK_NODES]: Record<NetworkId, NetworkNodes>;
   readonly [LSKeys.NOTIFICATIONS]: Record<TUuid, Notification>;
   readonly [LSKeys.SETTINGS]: ISettings;
-  readonly [LSKeys.PASSWORD]: string;
   readonly [LSKeys.USER_ACTIONS]: Record<TUuid, UserAction>;
+  readonly [LSKeys.PROMO_POAPS]: PromoPoapsState;
+  readonly [LSKeys.CONNECTIONS]: ConnectionsState;
+  readonly [LSKeys.CLAIMS]: ClaimsState;
 }
 export interface DataStore {
   readonly version: string;
@@ -60,11 +67,8 @@ export interface DataStore {
   readonly [LSKeys.NETWORKS]: Network[];
   readonly [LSKeys.NOTIFICATIONS]: ExtendedNotification[];
   readonly [LSKeys.SETTINGS]: ISettings;
-  readonly [LSKeys.PASSWORD]: string;
   readonly [LSKeys.USER_ACTIONS]: ExtendedUserAction[];
-}
-
-export interface EncryptedDataStore {
-  readonly data?: string;
-  readonly error?: boolean;
+  readonly [LSKeys.PROMO_POAPS]: PromoPoapsState;
+  readonly [LSKeys.CONNECTIONS]: ConnectionsState;
+  readonly [LSKeys.CLAIMS]: ClaimsState;
 }

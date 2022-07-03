@@ -1,8 +1,6 @@
-import React from 'react';
-
 import styled from 'styled-components';
 
-import { Amount } from '@components';
+import { Currency } from '@components';
 import { default as Icon } from '@components/Icon';
 import { useAssets } from '@services';
 import { SPACING } from '@theme';
@@ -29,18 +27,18 @@ export const FaucetReceiptBanner = ({
     <>
       <div className="TransactionReceipt-row">
         <div className="TransactionReceipt-row-column">
-          <SIcon type="tx-network" width={'30px'} height={'30px'} />
+          <SIcon type="tx-network" height={'25px'} />
           {translate('NETWORK')}
         </div>
         <div className="TransactionReceipt-row-column rightAligned">{network.name}</div>
       </div>
       <div className="TransactionReceipt-row">
         <div className="TransactionReceipt-row-column">
-          <SIcon type="tx-receive" width={'30px'} height={'30px'} />
+          <SIcon type="tx-receive" height={'25px'} />
           {translate('CONFIRM_TX_RECEIVED')}
         </div>
         <div className="TransactionReceipt-row-column rightAligned">
-          <Amount assetValue={`${formattedReceived} ${baseAsset.ticker}`} />
+          <Currency amount={formattedReceived} ticker={baseAsset.ticker} />
         </div>
       </div>
     </>

@@ -1,4 +1,4 @@
-import React, { useContext, useEffect, useState } from 'react';
+import { useContext, useEffect, useState } from 'react';
 
 import { connect, ConnectedProps } from 'react-redux';
 import { useLocation } from 'react-router-dom';
@@ -55,7 +55,7 @@ const SMain = styled('main')<{ bgColor?: string; isDemoMode?: boolean }>`
 
   overflow-x: hidden;
   min-width: 350px;
-  background: ${(p: { bgColor?: string }) => p.bgColor || '#f6f8fa'};
+  background: ${({ bgColor = '#f6f8fa' }) => bgColor};
   min-height: 100%;
   display: flex;
   flex-direction: column;
@@ -174,7 +174,7 @@ const Layout = ({ config = {}, className = '', children, isDemoMode }: Props) =>
                   variables={{
                     $link: () => (
                       <LinkApp href={ROUTE_PATHS.ADD_ACCOUNT.path} variant="underlineLink">
-                        {translateRaw('DEMO_BANNER_LINK_TEXT')}
+                        {translateRaw('ADD_AN_ACCOUNT')}
                       </LinkApp>
                     )
                   }}

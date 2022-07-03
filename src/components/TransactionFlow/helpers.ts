@@ -5,22 +5,24 @@ import pick from 'ramda/src/pick';
 import { Brand, ValuesType } from 'utility-types';
 
 import { WALLET_STEPS } from '@components';
-import { TokenMigrationReceiptProps } from '@components/TokenMigration/components/TokenMigrationReceipt';
 import { CONTRACT_INTERACTION_TYPES } from '@config';
 import { IMembershipPurchaseReceiptProps } from '@features/PurchaseMembership/components/MembershipPurchaseReceipt';
+import { TokenMigrationReceiptProps } from '@features/TokenMigration/components/TokenMigrationReceipt';
+import { fetchUniversalGasPriceEstimate } from '@services/ApiService/Gas';
 import { getAccountBalance, getStoreAccount } from '@services/Store';
 import {
-  Bigish,
   IFlowConfig,
   ISimpleTxFormFull,
   ITxConfig,
   ITxMultiConfirmProps,
   ITxObject,
   ITxType,
+  Network,
   StoreAccount,
   TxParcel
 } from '@types';
-import { bigify, bigNumGasPriceToViewableGwei } from '@utils';
+import { bigify, bigNumGasPriceToViewableGwei, stripHexPrefix } from '@utils';
+import { isType2Tx } from '@utils/typedTx';
 
 import { ISender } from './types';
 
@@ -36,6 +38,7 @@ interface Props {
   flowConfig: IFlowConfig;
   transactions: TxParcel[];
   isSubmitting: boolean;
+  error?: CustomError;
 
   multiTxTitle: string;
   receiptTitle: string;
@@ -58,6 +61,7 @@ export const createSignConfirmAndReceiptSteps = ({
   receiptComponent,
   account,
   transactions,
+  error,
   isSubmitting,
   sendTx,
   prepareTx
@@ -73,7 +77,8 @@ export const createSignConfirmAndReceiptSteps = ({
         transactions,
         flowConfig,
         currentTxIdx: idx,
-        amount
+        amount,
+        error: error?.reason ?? error?.message
       },
       actions: (_: ISimpleTxFormFull, goToNextStep: () => void) => {
         if (transactions.length > 1) {
@@ -111,11 +116,11 @@ export const constructSenderFromTxConfig = (
   txConfig: ITxConfig,
   accounts: StoreAccount[]
 ): ISender => {
-  const { network, senderAccount, from } = txConfig;
+  const { senderAccount, from, networkId } = txConfig;
   const defaultSender: ISender = {
     address: from,
     assets: [],
-    network
+    networkId
   };
 
   const sender: ISender = mergeDeepWith(
@@ -127,7 +132,7 @@ export const constructSenderFromTxConfig = (
   );
 
   // if account exists in store add it to sender
-  const account = getStoreAccount(accounts)(sender.address, sender.network.id);
+  const account = getStoreAccount(accounts)(sender.address, networkId);
   if (account) {
     sender.account = account;
     sender.accountBalance = getAccountBalance(senderAccount);
@@ -137,15 +142,32 @@ export const constructSenderFromTxConfig = (
 };
 
 // replacement gas price must be at least 10% higher than the replaced tx's gas price
-export const calculateReplacementGasPrice = (txConfig: ITxConfig, fastGasPrice: Bigish) =>
-  BigNumber.max(
-    fastGasPrice,
-    bigify(bigNumGasPriceToViewableGwei(txConfig.gasPrice)).multipliedBy(1.101)
-  );
+export const calculateReplacementGasPrice = async (txConfig: ITxConfig, network: Network) => {
+  const { estimate: gas } = await fetchUniversalGasPriceEstimate(network, txConfig.senderAccount);
+
+  return isType2Tx(txConfig.rawTransaction)
+    ? {
+        maxFeePerGas: BigNumber.max(
+          bigify(gas.maxFeePerGas!),
+          bigify(bigNumGasPriceToViewableGwei(txConfig.rawTransaction.maxFeePerGas)).multipliedBy(
+            1.101
+          )
+        ).toString(10),
+        maxPriorityFeePerGas: BigNumber.max(
+          bigify(gas.maxPriorityFeePerGas!),
+          bigify(
+            bigNumGasPriceToViewableGwei(txConfig.rawTransaction.maxPriorityFeePerGas)
+          ).multipliedBy(1.101)
+        ).toString(10)
+      }
+    : {
+        gasPrice: BigNumber.max(
+          bigify(gas.gasPrice!),
+          bigify(bigNumGasPriceToViewableGwei(txConfig.rawTransaction.gasPrice)).multipliedBy(1.101)
+        ).toString(10)
+      };
+};
 
 export const isContractInteraction = (data: string, type?: ITxType) => {
-  if (type) {
-    return CONTRACT_INTERACTION_TYPES.includes(type);
-  }
-  return data !== '0x';
+  return (type && CONTRACT_INTERACTION_TYPES.includes(type)) || stripHexPrefix(data).length > 0;
 };

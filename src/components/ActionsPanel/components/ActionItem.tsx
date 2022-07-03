@@ -1,4 +1,4 @@
-import React, { Dispatch, SetStateAction } from 'react';
+import { Dispatch, SetStateAction } from 'react';
 
 import styled, { css, keyframes } from 'styled-components';
 
@@ -23,6 +23,10 @@ const greenLightup = keyframes`
 const Action = styled.div<{ state?: string }>`
   display: flex;
   align-items: center;
+  ${(p) =>
+    css`
+      background: ${!p.state || p.state === 'new' ? COLORS.WHITE : 'rgba(232, 234, 237, 0.3)'};
+    `}
   border-bottom: 1px solid ${COLORS.GREY_ATHENS};
   min-height: 60px;
   padding: 0 ${SPACING.BASE};
@@ -30,7 +34,7 @@ const Action = styled.div<{ state?: string }>`
   ${(p) =>
     p.state === 'completed' &&
     css`
-      & > * {
+      & > div {
         opacity: 0.2;
       }
       text-decoration: line-through;
@@ -73,6 +77,8 @@ export const ActionItem = ({
 
   if (!userAction) createUserAction(actionTemplate);
 
+  const isNew = !userAction || userAction.state === ACTION_STATE.NEW;
+
   const SubHeading = actionTemplate.subHeading;
 
   return (
@@ -84,13 +90,20 @@ export const ActionItem = ({
         <Icon type={actionTemplate.icon} height="28px" />
       </IconContainer>
       <TitleContainer>
-        <Text mb={0} fontSize={2}>
+        <Text mb={0} fontSize={2} fontWeight={isNew ? 'bold' : undefined}>
           {actionTemplate.heading}
         </Text>
         {SubHeading && <SubHeading {...actionTemplate.props} />}
       </TitleContainer>
+
       <Icon
-        type={hidden ? 'opened-eye' : 'more'}
+        type={
+          hidden
+            ? 'opened-eye'
+            : userAction && userAction.state === 'completed'
+            ? 'action-completed'
+            : 'more'
+        }
         onClick={() =>
           hidden &&
           userAction &&

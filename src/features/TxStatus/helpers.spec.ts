@@ -45,9 +45,9 @@ describe('fetchTxStatus', () => {
     expect(result?.cachedTx).toBeUndefined();
     expect({
       ...result?.fetchedTx,
-      gasLimit: BigNumber.from(result?.fetchedTx?.gasLimit || 0),
-      gasPrice: BigNumber.from(result?.fetchedTx?.gasPrice || 0),
-      value: BigNumber.from(result?.fetchedTx?.value || 0)
+      gasLimit: BigNumber.from(result?.fetchedTx?.gasLimit ?? 0),
+      gasPrice: BigNumber.from(result?.fetchedTx?.gasPrice ?? 0),
+      value: BigNumber.from(result?.fetchedTx?.value ?? 0)
     }).toStrictEqual({
       ...fETHWeb3TxResponse,
       gasLimit: BigNumber.from('0x7d3c'),
@@ -72,7 +72,8 @@ describe('makeTx', () => {
         ...fETHNonWeb3TxConfig.rawTransaction,
         from: fETHNonWeb3TxConfig.from,
         nonce: '0x06',
-        gasPrice: '0x012a05f200'
+        gasPrice: '0x012a05f200',
+        type: undefined
       }
     });
     expect(result.receipt).toBe(fETHNonWeb3TxReceipt);
@@ -92,17 +93,20 @@ describe('makeTx', () => {
         ...fETHNonWeb3TxConfig.rawTransaction,
         from: fETHNonWeb3TxConfig.from,
         nonce: '0x06',
-        gasPrice: '0x012a05f200'
+        gasPrice: '0x012a05f200',
+        type: undefined
       }
     });
-    expect(result.receipt).toStrictEqual({
-      ...fETHNonWeb3TxReceipt,
-      asset: fAssets[1],
-      txType: ITxType.UNKNOWN,
-      status: ITxStatus.UNKNOWN,
-      to: toChecksumAddress(fETHNonWeb3TxReceipt.to),
-      from: toChecksumAddress(fETHNonWeb3TxReceipt.from),
-      receiverAddress: toChecksumAddress(fETHNonWeb3TxReceipt.receiverAddress)
-    });
+    expect(result.receipt).toStrictEqual(
+      expect.objectContaining({
+        ...fETHNonWeb3TxReceipt,
+        asset: fAssets[1],
+        txType: ITxType.UNKNOWN,
+        status: ITxStatus.UNKNOWN,
+        to: toChecksumAddress(fETHNonWeb3TxReceipt.to),
+        from: toChecksumAddress(fETHNonWeb3TxReceipt.from),
+        receiverAddress: toChecksumAddress(fETHNonWeb3TxReceipt.receiverAddress)
+      })
+    );
   });
 });

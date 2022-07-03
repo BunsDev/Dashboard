@@ -8,5 +8,8 @@
     }
   ],
   "developmentMode": true,
-  "color": true
+  "color": true,
+  "quarantineMode": {
+    "successThreshold": 1
+  }
 }

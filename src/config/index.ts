@@ -2,20 +2,7 @@ export * from './data';
 export { DEMO_SETTINGS } from './demo';
 export * from './donations';
 export * from './addressMessages';
-export {
-  EXT_URLS,
-  partnerLinks,
-  productLinks,
-  socialMediaLinks,
-  DOWNLOAD_MYCRYPTO_LINK,
-  SUBSCRIBE_NEWSLETTER_LINK,
-  UNISWAP_LINK,
-  MYC_WINTER_LINK,
-  TWEET_LINK,
-  MYCRYPTO_FAUCET_LINK,
-  MYCRYPTO_PROD_LINK
-} from './links';
-export * from './dpaths';
+export * from './links';
 export * from './constants';
 export * from './uuids';
 export { ETHSCAN_NETWORKS } from './ethScan';
@@ -37,7 +24,8 @@ export {
   INSECURE_WALLETS,
   HARDWARE_WALLETS,
   WEB3_WALLETS,
-  getWalletConfig
+  getWalletConfig,
+  HARDWARE_CONFIG
 } from './wallets';
 export { KB_HELP_ARTICLE, HELP_ARTICLE, getKBHelpArticle } from './helpArticles';
 export { Fiats } from './fiats';
@@ -50,3 +38,5 @@ export {
 } from './queryParams';
 export * from './txTypes';
 export { STATIC_CONTACTS } from './staticContacts';
+export { getFiat } from './fiats';
+export * from './poapPromos';

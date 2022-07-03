@@ -1,28 +1,17 @@
 import { fNetwork as network } from './network';
 import { default as txConfig } from './txConfig.json';
+import { default as txConfigDeploy } from './txConfigDeploy.json';
+import { default as txConfigEIP1559 } from './txConfigEIP1559.json';
 
-export { fAssets, fStoreAssets, fRopDAI } from './assets';
+export { fAssets, fStoreAssets, fRopDAI, fDAI } from './assets';
 export { fAccount, fAccounts, fDWAccounts } from './account';
 export { fContacts } from './contacts';
 export { fNetwork, fNetworks } from './network';
-export {
-  fTransaction,
-  fETHNonWeb3TxResponse,
-  fETHNonWeb3TxReceipt,
-  fETHWeb3TxResponse,
-  fETHWeb3TxReceipt,
-  fERC20Web3TxResponse,
-  fERC20Web3TxReceipt,
-  fERC20NonWeb3TxResponse,
-  fERC20NonWeb3TxReceipt,
-  fFinishedERC20NonWeb3TxReceipt,
-  fFinishedERC20Web3TxReceipt,
-  fDerivedApprovalTx,
-  fDerivedRepMigrationTx,
-  fDerivedGolemMigrationTx
-} from './transaction';
+export * from './transaction';
 export { fSettings } from './settings';
 export const fTxConfig = { ...txConfig, network };
+export const fTxConfigEIP1559 = txConfigEIP1559;
+export const fTxConfigDeploy = txConfigDeploy;
 
 export { default as fTxConfigs } from './txConfigs.json';
 export { default as fTxReceipt } from './txReceipt.json';
@@ -52,14 +41,9 @@ export { default as fETHNonWeb3TxConfigJSON } from './ethNonWeb3TxConfig.json';
 export { default as fETHWeb3TxConfigJSON } from './ethWeb3TxConfig.json';
 
 export { fDefiReserveRates } from './defiRates';
-export { fTxHistoryAPI } from './txHistory';
+export { fTxHistoryAPI, fTxHistory, fTxTypeMetas } from './txHistory';
 
-export {
-  fAdvancedETHTxSendFormikFields,
-  fAdvancedERC20TxSendFormikFields,
-  fERC20TxSendFormikFields,
-  fETHTxSendFormikFields
-} from './sendFormFields';
+export * from './sendFormFields';
 
 export { fNotifications } from './notifications';
 
@@ -75,5 +59,8 @@ export { fUserActions, fActionTemplates } from './userActions';
 export { membershipApiResponse, accountWithMembership } from './membership';
 export { default as APP_STATE } from './appState';
 
-export { fSwapQuote } from './swapQuote';
+export * from './swapQuote';
 export { fBalances } from './balances';
+export * from './ens';
+export * from './nft';
+export * from './hdWallet';

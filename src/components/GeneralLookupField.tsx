@@ -1,15 +1,16 @@
-import React, { FocusEventHandler, useCallback, useEffect, useRef, useState } from 'react';
+import { FocusEventHandler, KeyboardEvent, useCallback, useEffect, useRef, useState } from 'react';
 
-import { ResolutionError } from '@unstoppabledomains/resolution/build/resolutionError';
+import { ResolutionError, ResolutionErrorCode } from '@unstoppabledomains/resolution';
 
 import { DomainStatus, InlineMessage } from '@components';
 import {
   isValidENSName,
   isValidETHAddress,
-  isValidETHRecipientAddress
+  isValidETHRecipientAddress,
+  ProviderHandler
 } from '@services/EthService';
-import { getBaseAssetByNetwork, useAssets } from '@services/Store';
-import UnstoppableResolution from '@services/UnstoppableService';
+import { createENSResolutionError, isResolutionError } from '@services/EthService/ens';
+import { selectDefaultNetwork, useSelector } from '@store';
 import { ErrorObject, IReceiverAddress, Network } from '@types';
 
 import AddressLookupSelector, { LabeledAddress } from './AddressLookupSelector';
@@ -51,7 +52,7 @@ const GeneralLookupField = ({
   setFieldTouched,
   setFieldError
 }: IGeneralLookupFieldComponentProps) => {
-  const { assets } = useAssets();
+  const ethNetwork = useSelector(selectDefaultNetwork);
   const errorMessage =
     error && Object.prototype.hasOwnProperty.call(error, 'message')
       ? (error as ErrorObject).message
@@ -129,7 +130,7 @@ const GeneralLookupField = ({
     }
   };
 
-  const handleDomainResolve = async (domain: string): Promise<string | undefined> => {
+  const handleDomainResolve = async (domain: string): Promise<string | undefined | null> => {
     if (!domain || !network) {
       setIsResolvingDomain(false);
       setResolutionError(undefined);
@@ -138,11 +139,12 @@ const GeneralLookupField = ({
     setIsResolvingDomain(true);
     setResolutionError(undefined);
     try {
-      const unstoppableAddress = await UnstoppableResolution.getResolvedAddress(
-        domain,
-        getBaseAssetByNetwork({ network, assets })!.ticker
-      );
-      return unstoppableAddress;
+      const provider = new ProviderHandler(ethNetwork);
+      const resolvedAddress = await provider.resolveName(domain, network);
+      if (!resolvedAddress) {
+        throw new ResolutionError(ResolutionErrorCode.UnregisteredDomain, { domain });
+      }
+      return resolvedAddress;
     } catch (err) {
       // Force the field value to error so that isValidAddress is triggered!
       if (setFieldValue) {
@@ -155,9 +157,18 @@ const GeneralLookupField = ({
           true
         );
       }
-      if (UnstoppableResolution.isResolutionError(err)) {
+      if (isResolutionError(err)) {
         setResolutionError(err);
-      } else throw err;
+        return;
+      }
+
+      const resErr = createENSResolutionError(err);
+      if (resErr) {
+        setResolutionError(resErr);
+        return;
+      }
+
+      throw err;
     } finally {
       setIsResolvingDomain(false);
     }
@@ -170,7 +181,7 @@ const GeneralLookupField = ({
       return input;
     };
 
-    const handleEnterKeyDown = (e: React.KeyboardEvent<HTMLElement>) => {
+    const handleEnterKeyDown = (e: KeyboardEvent<HTMLElement>) => {
       if (e.keyCode === 13) {
         handleNewInput(inputValue.current);
         if (onChange) onChange(inputValue.current);

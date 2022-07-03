@@ -1,23 +1,24 @@
-import { DPath } from '@types';
-import { bigify } from '@utils/bigify';
+import { DerivationPath as DPath } from '@mycrypto/wallets';
+
+import { bigify } from '@utils';
 
 import { DWAccountDisplay, ExtendedDPath } from './types';
 
-export const processFinishedAccounts = (
-  finishedAccounts: DWAccountDisplay[],
+export const processScannedAccounts = (
+  scannedAccounts: DWAccountDisplay[],
   customDPaths: ExtendedDPath[],
   desiredGap: number
 ) => {
-  const pathItems = finishedAccounts.map((acc) => ({
+  const pathItems = scannedAccounts.map((acc) => ({
     ...acc.pathItem,
     balance: acc.balance
   }));
   const relevantIndexes = pathItems.reduce((acc, item) => {
-    const idx = item.baseDPath.value;
+    const idx = item.baseDPath.path;
     const curLastIndex = acc[idx]?.lastIndex;
     const curLastInhabitedIndex = acc[idx]?.lastInhabitedIndex || 0;
     const newLastInhabitedIndex =
-      curLastInhabitedIndex < item.index && item.balance && !item.balance.isZero()
+      curLastInhabitedIndex < item.index && item.balance && !bigify(item.balance).isZero()
         ? item.index
         : curLastInhabitedIndex;
     acc[idx] = {
@@ -39,7 +40,7 @@ export const processFinishedAccounts = (
     );
 
   const customDPathsDetected = customDPaths.filter(
-    (customDPath) => !relevantIndexes[customDPath.value]
+    (customDPath) => !relevantIndexes[customDPath.path]
   );
 
   return { newGapItems: addNewItems, customDPathItems: customDPathsDetected };
@@ -47,10 +48,3 @@ export const processFinishedAccounts = (
 
 export const sortAccountDisplayItems = (accounts: DWAccountDisplay[]): DWAccountDisplay[] =>
   accounts.sort((a, b) => a.pathItem.index - b.pathItem.index);
-
-export const findFinishedZeroBalanceAccounts = (
-  accounts: DWAccountDisplay[]
-): DWAccountDisplay[] => {
-  const sortedAccounts = sortAccountDisplayItems(accounts);
-  return sortedAccounts.filter(({ balance }) => balance && bigify(balance.toString()).isZero());
-};

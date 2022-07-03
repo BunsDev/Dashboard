@@ -1,40 +1,41 @@
-import React from 'react';
+import { ComponentProps } from 'react';
 
-import { simpleRender } from 'test-utils';
+import { mockAppState, simpleRender } from 'test-utils';
 
 import { fAccount, fAccounts, fTxParcels } from '@fixtures';
-import { StoreContext } from '@services';
 import { translateRaw } from '@translations';
-import { TAddress } from '@types';
+import { ITxType, TAddress } from '@types';
 import { noOp, truncate } from '@utils';
 
 import { IMembershipId, MEMBERSHIP_CONFIG } from '../config';
 import MembershipReceipt from './MembershipPurchaseReceipt';
 
-const defaultProps: React.ComponentProps<typeof MembershipReceipt> = {
+jest.mock('@vendor', () => {
+  return {
+    ...jest.requireActual('@vendor'),
+    FallbackProvider: jest.fn().mockImplementation(() => ({
+      waitForTransaction: jest.fn().mockResolvedValue({ status: 1 })
+    }))
+  };
+});
+
+const defaultProps: ComponentProps<typeof MembershipReceipt> = {
   account: fAccounts[0],
   transactions: [
     {
       ...fTxParcels[0],
-      txRaw: { ...fTxParcels[0].txRaw, to: MEMBERSHIP_CONFIG.lifetime.contractAddress as TAddress }
+      txRaw: { ...fTxParcels[0].txRaw, to: MEMBERSHIP_CONFIG.lifetime.contractAddress as TAddress },
+      txType: ITxType.PURCHASE_MEMBERSHIP
     }
   ],
   flowConfig: MEMBERSHIP_CONFIG[IMembershipId.lifetime],
   onComplete: noOp
 };
 
-function getComponent(props: React.ComponentProps<typeof MembershipReceipt>) {
-  return simpleRender(
-    <StoreContext.Provider
-      value={
-        ({
-          accounts: fAccounts
-        } as any) as any
-      }
-    >
-      <MembershipReceipt {...props} />
-    </StoreContext.Provider>
-  );
+function getComponent(props: ComponentProps<typeof MembershipReceipt>) {
+  return simpleRender(<MembershipReceipt {...props} />, {
+    initialState: mockAppState({ accounts: fAccounts })
+  });
 }
 
 describe('MembershipReceipt', () => {

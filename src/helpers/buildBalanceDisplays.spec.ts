@@ -1,26 +1,25 @@
 import { fAccounts, fBalances, fSettings, fStoreAssets } from '@fixtures';
-import { getTotalByAsset } from '@services/Store/Asset/helpers';
-import { Asset, StoreAccount, StoreAsset, TUuid } from '@types';
+import { Asset, StoreAsset, TUuid } from '@types';
 
 import { buildBalances, buildTotalFiatValue } from './buildBalanceDisplays';
 
-const totals = (_: StoreAccount[]) =>
-  Object.values(getTotalByAsset([...fStoreAssets, ...fStoreAssets]));
+const accounts = [{ ...fAccounts[0], assets: fStoreAssets }];
 const getAssetRate = (_: Asset) => 1;
+const getAssetChange = (_: Asset) => 10.5;
 const filterTrue = (_: TUuid[]) => (__: StoreAsset) => true;
 const filterFalse = (_: TUuid[]) => (__: StoreAsset) => false;
 
 describe('buildBalances', () => {
   it('builds balances', () => {
     const expected = fBalances;
-    const actual = buildBalances(totals, fAccounts, fSettings, getAssetRate, filterTrue);
+    const actual = buildBalances(accounts, fSettings, getAssetRate, getAssetChange, filterTrue);
     expect(actual).toStrictEqual(expected);
   });
 });
 
 describe('buildTotalFiatValue', () => {
   it('builds total fiat values', () => {
-    const balances = buildBalances(totals, fAccounts, fSettings, getAssetRate, filterFalse);
+    const balances = buildBalances(accounts, fSettings, getAssetRate, getAssetChange, filterFalse);
     const actual = buildTotalFiatValue(balances);
     expect(actual).toBe('0');
   });

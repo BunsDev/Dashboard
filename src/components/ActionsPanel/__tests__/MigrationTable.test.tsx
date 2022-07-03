@@ -1,30 +1,21 @@
-import React from 'react';
+import { ComponentProps } from 'react';
 
-import { screen, simpleRender } from 'test-utils';
+import { mockAppState, screen, simpleRender } from 'test-utils';
 
 import { ETHUUID } from '@config';
 import { fAccounts, fAssets } from '@fixtures';
-import { getAccountsByAsset, StoreContext } from '@services/Store';
+import { getAccountsByAsset } from '@services/Store';
 import { TUuid } from '@types';
 import { truncate } from '@utils';
 
 import { MigrationTable } from '../components/MigrationTable';
 
-type Props = React.ComponentProps<typeof MigrationTable>;
+type Props = ComponentProps<typeof MigrationTable>;
 
 function getComponent(props: Props) {
-  return simpleRender(
-    <StoreContext.Provider
-      value={
-        ({
-          accounts: fAccounts,
-          assets: fAssets
-        } as any) as any
-      }
-    >
-      <MigrationTable {...props} />
-    </StoreContext.Provider>
-  );
+  return simpleRender(<MigrationTable {...props} />, {
+    initialState: mockAppState({ accounts: fAccounts, assets: fAssets })
+  });
 }
 
 const defaultProps = {

@@ -1,9 +1,10 @@
-import React from 'react';
+import { FC } from 'react';
 
 import isEmpty from 'ramda/src/isEmpty';
 import styled, { css } from 'styled-components';
 
 import {
+  Box,
   BusyBottom,
   Button,
   CodeBlock,
@@ -12,9 +13,12 @@ import {
   Spinner,
   Typography
 } from '@components';
+import { TxIntermediaryDisplay } from '@components/TransactionFlow/displays';
+import { isContractInteraction } from '@components/TransactionFlow/helpers';
 import { getNetworkByChainId } from '@services';
 import { useNetworks } from '@services/Store';
 import { TActionError, useWalletConnect, WcReducer } from '@services/WalletService';
+import { getContractName, useSelector } from '@store';
 import { BREAK_POINTS, COLORS, FONT_SIZE } from '@theme';
 import translate, { translateRaw } from '@translations';
 import { BusyBottomConfig, ISignComponentProps, ITxHash, TAddress } from '@types';
@@ -80,7 +84,7 @@ interface ErrorProps {
   onClick(): void;
 }
 
-const ErrorHandlers: { [K in TActionError]: React.FC<ErrorProps> } = {
+const ErrorHandlers: { [K in TActionError]: FC<ErrorProps> } = {
   WRONG_ADDRESS: ({ address }) => (
     <Typography style={{ padding: '0 2em' }}>
       {translateRaw('SIGN_TX_WALLETCONNECT_FAILED_ACCOUNT', {
@@ -159,6 +163,8 @@ export function SignTransactionWalletConnect({
     sendTx();
   }, [state.isConnected, state.promptSignRetry, state.errors]);
 
+  const contractName = useSelector(getContractName(network.id, rawTransaction.to));
+
   return (
     <>
       <SHeader>
@@ -197,6 +203,11 @@ export function SignTransactionWalletConnect({
             </Typography>
             <Typography as="div">{translateRaw('SIGN_TX_WALLETCONNECT_INSTRUCTIONS_3')}</Typography>
           </SSection>
+        )}
+        {isContractInteraction(rawTransaction.data) && rawTransaction.to && (
+          <Box mt={3}>
+            <TxIntermediaryDisplay address={rawTransaction.to} contractName={contractName} />
+          </Box>
         )}
         <SSection center={true} withOverlay={true}>
           <Overlay absolute={true} center={true} show={state.isConnected || !isEmpty(state.errors)}>

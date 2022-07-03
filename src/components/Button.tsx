@@ -1,4 +1,4 @@
-import React from 'react';
+import { ComponentProps, ReactNode } from 'react';
 
 import { Button } from '@mycrypto/ui';
 import styled, { css } from 'styled-components';
@@ -8,12 +8,17 @@ import { COLORS, SPACING } from '@theme';
 import Spinner from './Spinner';
 import Typography from './Typography';
 
-const ButtonColorSchemes = { default: 'default', inverted: 'inverted', warning: 'warning' };
+const ButtonColorSchemes = {
+  default: 'default',
+  inverted: 'inverted',
+  warning: 'warning',
+  transparent: 'transparent'
+};
 
 type TButtonColorScheme = keyof typeof ButtonColorSchemes;
 
 interface ButtonProps {
-  children: React.ReactNode | string;
+  children: ReactNode | string;
   fullwidth?: boolean;
   disabled?: boolean;
   loading?: boolean;
@@ -28,7 +33,7 @@ interface StyledButtonProps {
   _loading?: boolean;
 }
 
-export type Props = ButtonProps & React.ComponentProps<typeof Button>;
+export type Props = ButtonProps & ComponentProps<typeof Button>;
 
 const Wrapper = styled.div`
   display: flex;
@@ -125,6 +130,35 @@ const SButton = styled(Button)<StyledButtonProps>`
   `}
 
   ${(props) =>
+    props.colorScheme === 'transparent' &&
+    `
+      background-color: ${props.disabled ? COLORS.GREY_LIGHT : 'transparent'};
+
+      div > span {
+        color:  ${props.disabled ? COLORS.WHITE : COLORS.WHITE};
+      }
+
+      &:hover {
+        div > span {
+          color: ${props.disabled ? COLORS.WHITE : COLORS.BLUE_LIGHT};
+        }
+      }
+
+      border: 2px solid ${props.disabled ? COLORS.GREY_LIGHT : COLORS.WHITE};
+      border-radius: 3px;
+
+      &:hover {
+        background-color: ${props.disabled ? COLORS.GREY_LIGHT : COLORS.WHITE};
+      }
+      &:focus {
+        div > span {
+          color: ${props.disabled ? COLORS.GREY_LIGHT : COLORS.WHITE};
+        }
+      }
+  `}
+
+
+  ${(props) =>
     props.fullwidth &&
     css`
       width: 100%;
@@ -134,7 +168,7 @@ const SButton = styled(Button)<StyledButtonProps>`
 
 function StyledButton({ children, disabled, loading, colorScheme = 'default', ...props }: Props) {
   return (
-    <SButton disabled={disabled || loading} _loading={loading} colorScheme={colorScheme} {...props}>
+    <SButton disabled={disabled ?? loading} _loading={loading} colorScheme={colorScheme} {...props}>
       <Wrapper>
         {loading && (
           <LoadingSpinnerWrapper>

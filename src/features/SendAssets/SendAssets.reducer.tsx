@@ -15,7 +15,6 @@ import {
   TAddress,
   TxQueryTypes
 } from '@types';
-import { hexWeiToString } from '@utils';
 
 import { processFormDataToTx } from './helpers';
 
@@ -26,6 +25,7 @@ interface State {
   txReceipt?: ITxReceipt;
   signedTx?: ISignedTx;
   send?: boolean;
+  error?: string;
 }
 
 export type ReducerAction = TAction<ValuesType<typeof sendAssetsReducer.actionTypes>, any>;
@@ -42,22 +42,17 @@ export const sendAssetsReducer = (state: State, action: ReducerAction): State =>
         network: form.network,
         assets
       });
-      const txConfig = {
+      const txConfig: ITxConfig = {
         rawTransaction,
         amount: form.amount,
         senderAccount: form.account,
         receiverAddress: form.address.value as TAddress,
-        network: form.network,
+        networkId: form.network.id,
         asset: form.asset,
-        baseAsset: baseAsset || ({} as Asset),
-        from: form.account.address,
-        gasPrice: hexWeiToString(rawTransaction.gasPrice),
-        gasLimit: form.gasLimitField,
-        nonce: form.nonceField,
-        data: rawTransaction.data,
-        value: hexWeiToString(rawTransaction.value)
+        baseAsset: baseAsset ?? ({} as Asset),
+        from: form.account.address
       };
-      return { ...state, txConfig };
+      return { ...state, txConfig, error: undefined };
     }
 
     case sendAssetsReducer.actionTypes.SET_TXCONFIG: {
@@ -75,7 +70,7 @@ export const sendAssetsReducer = (state: State, action: ReducerAction): State =>
         assets,
         networks,
         accounts,
-        state.txConfig
+        state.txConfig?.networkId
       );
 
       return { ...state, txConfig, signedTx };
@@ -91,12 +86,12 @@ export const sendAssetsReducer = (state: State, action: ReducerAction): State =>
     }
 
     case sendAssetsReducer.actionTypes.SEND_SUCCESS: {
-      const { signedTx } = state;
-      // @todo: Handle this error state.
-      const txReceipt = signedTx
-        ? createPendingTxReceipt(state, action.payload.hash as ITxHash)
-        : undefined;
-      return { ...state, send: false, txReceipt };
+      const txReceipt = createPendingTxReceipt(state, action.payload.hash as ITxHash);
+      return { ...state, send: false, txReceipt, error: undefined };
+    }
+
+    case sendAssetsReducer.actionTypes.SEND_ERROR: {
+      return { ...state, send: false, error: action.payload };
     }
 
     case sendAssetsReducer.actionTypes.RESET:
@@ -113,7 +108,8 @@ sendAssetsReducer.actionTypes = {
   REQUEST_SEND: 'REQUEST_SEND',
   SEND_SUCCESS: 'SEND_SUCCESS',
   RESET: 'RESET',
-  SET_TXCONFIG: 'SET_TXCONFIG'
+  SET_TXCONFIG: 'SET_TXCONFIG',
+  SEND_ERROR: 'SEND_ERROR'
 };
 
 const createPendingTxReceipt = (state: State, payload: ITxHash) => {

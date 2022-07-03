@@ -1,7 +1,9 @@
 import { BigNumber } from '@ethersproject/bignumber';
+import { parse as parseTransaction } from '@ethersproject/transactions';
 
-import { donationAddressMap } from '@config';
+import { donationAddressMap, ETHUUID } from '@config';
 import {
+  fAccount,
   fAccounts,
   fAssets,
   fERC20NonWeb3TxConfigJSON as fERC20NonWeb3TxConfig,
@@ -20,7 +22,11 @@ import {
   fFinishedERC20Web3TxReceipt,
   fNetwork,
   fNetworks,
-  fRopDAI
+  fRopDAI,
+  fSignedTx,
+  fSignedTxEIP1559,
+  fTxConfigEIP1559,
+  fTxReceiptEIP1559
 } from '@fixtures';
 import {
   ITxData,
@@ -31,7 +37,8 @@ import {
   ITxToAddress,
   ITxType,
   ITxValue,
-  TAddress
+  TAddress,
+  TUuid
 } from '@types';
 
 import {
@@ -45,7 +52,9 @@ import {
   guessERC20Type,
   makeFinishedTxReceipt,
   makePendingTxReceipt,
-  makeTxConfigFromTxResponse,
+  makeTxConfigFromSignedTx,
+  makeTxConfigFromTx,
+  makeUnknownTxReceipt,
   toTxReceipt,
   verifyTransaction
 } from './transaction';
@@ -94,6 +103,24 @@ describe('toTxReceipt', () => {
     );
     expect(txReceipt).toStrictEqual(fERC20Web3TxReceipt);
   });
+
+  it('adds metadata if present', () => {
+    const metadata = { receivingAsset: ETHUUID as TUuid };
+    const txReceipt = toTxReceipt(fERC20Web3TxResponse.hash as ITxHash, ITxStatus.PENDING)(
+      ITxType.STANDARD,
+      fERC20Web3TxConfig,
+      metadata
+    );
+    expect(txReceipt).toStrictEqual({ ...fERC20Web3TxReceipt, metadata });
+  });
+
+  it('supports EIP 1559 gas', () => {
+    const txReceipt = toTxReceipt(fERC20Web3TxResponse.hash as ITxHash, ITxStatus.PENDING)(
+      ITxType.STANDARD,
+      fTxConfigEIP1559
+    );
+    expect(txReceipt).toStrictEqual(fTxReceiptEIP1559);
+  });
 });
 
 describe('makePendingTxReceipt', () => {
@@ -114,7 +141,7 @@ describe('makePendingTxReceipt', () => {
   });
 
   it('creates pending tx receipt for non-web3 erc20 tx', () => {
-    const txReceipt = toTxReceipt(fERC20NonWeb3TxResponse.hash as ITxHash, ITxStatus.PENDING)(
+    const txReceipt = makePendingTxReceipt(fERC20NonWeb3TxResponse.hash as ITxHash)(
       ITxType.STANDARD,
       fERC20NonWeb3TxConfig
     );
@@ -122,11 +149,69 @@ describe('makePendingTxReceipt', () => {
   });
 
   it('creates pending tx receipt for web3 erc20 tx', () => {
-    const txReceipt = toTxReceipt(fERC20Web3TxResponse.hash as ITxHash, ITxStatus.PENDING)(
+    const txReceipt = makePendingTxReceipt(fERC20Web3TxResponse.hash as ITxHash)(
       ITxType.STANDARD,
       fERC20Web3TxConfig
     );
     expect(txReceipt).toStrictEqual(fERC20Web3TxReceipt);
+  });
+
+  it('adds metadata if present', () => {
+    const metadata = { receivingAsset: ETHUUID as TUuid };
+    const txReceipt = makePendingTxReceipt(fERC20Web3TxResponse.hash as ITxHash)(
+      ITxType.STANDARD,
+      fERC20Web3TxConfig,
+      metadata
+    );
+    expect(txReceipt).toStrictEqual({ ...fERC20Web3TxReceipt, metadata });
+  });
+});
+
+describe('makeUnknownTxReceipt', () => {
+  it('creates pending tx receipt for non-web3 eth tx', () => {
+    const txReceipt = makeUnknownTxReceipt(fETHNonWeb3TxResponse.hash as ITxHash)(
+      ITxType.STANDARD,
+      fETHNonWeb3TxConfig
+    );
+    expect(txReceipt).toStrictEqual({ ...fETHNonWeb3TxReceipt, status: ITxStatus.UNKNOWN });
+  });
+
+  it('creates pending tx receipt for web3 eth tx', () => {
+    const txReceipt = makeUnknownTxReceipt(fETHWeb3TxResponse.hash as ITxHash)(
+      ITxType.STANDARD,
+      fETHWeb3TxConfig
+    );
+    expect(txReceipt).toStrictEqual({ ...fETHWeb3TxReceipt, status: ITxStatus.UNKNOWN });
+  });
+
+  it('creates pending tx receipt for non-web3 erc20 tx', () => {
+    const txReceipt = makeUnknownTxReceipt(fERC20NonWeb3TxResponse.hash as ITxHash)(
+      ITxType.STANDARD,
+      fERC20NonWeb3TxConfig
+    );
+    expect(txReceipt).toStrictEqual({ ...fERC20NonWeb3TxReceipt, status: ITxStatus.UNKNOWN });
+  });
+
+  it('creates pending tx receipt for web3 erc20 tx', () => {
+    const txReceipt = makeUnknownTxReceipt(fERC20Web3TxResponse.hash as ITxHash)(
+      ITxType.STANDARD,
+      fERC20Web3TxConfig
+    );
+    expect(txReceipt).toStrictEqual({ ...fERC20Web3TxReceipt, status: ITxStatus.UNKNOWN });
+  });
+
+  it('adds metadata if present', () => {
+    const metadata = { receivingAsset: ETHUUID as TUuid };
+    const txReceipt = makeUnknownTxReceipt(fERC20Web3TxResponse.hash as ITxHash)(
+      ITxType.STANDARD,
+      fERC20Web3TxConfig,
+      metadata
+    );
+    expect(txReceipt).toStrictEqual({
+      ...fERC20Web3TxReceipt,
+      status: ITxStatus.UNKNOWN,
+      metadata
+    });
   });
 });
 
@@ -285,10 +370,10 @@ describe('deriveTxFields', () => {
   });
 });
 
-describe('makeTxConfigFromTxResponse', () => {
+describe('makeTxConfigFromTx', () => {
   it('interprets an web3 tx response correctly', () => {
     const toAddress = '0x5197B5b062288Bbf29008C92B08010a92Dd677CD';
-    const result = makeTxConfigFromTxResponse(fETHWeb3TxResponse, fAssets, fNetwork, fAccounts);
+    const result = makeTxConfigFromTx(fETHWeb3TxResponse, fAssets, fNetwork, fAccounts);
     expect(result).toStrictEqual(
       expect.objectContaining({
         from: toAddress,
@@ -335,7 +420,7 @@ describe('appendGasLimit', () => {
       value: '0x0',
       data: '0x0',
       chainId: 1,
-      gasLimit: '0x6270',
+      gasLimit: '0x5208',
       gasPrice: '0x4a817c800'
     };
     expect(actual).toStrictEqual(expected);
@@ -371,7 +456,7 @@ describe('appendGasPrice', () => {
       data: '0x0' as ITxData,
       chainId: 1
     };
-    const actual = await appendGasPrice(fNetworks[0])(input);
+    const actual = await appendGasPrice(fNetworks[0], fAccount)(input);
     const expected = {
       to: senderAddr,
       value: '0x0',
@@ -390,7 +475,7 @@ describe('appendGasPrice', () => {
       gasPrice: '0x2540be400' as ITxGasPrice,
       chainId: 1
     };
-    const actual = await appendGasPrice(fNetworks[0])(input);
+    const actual = await appendGasPrice(fNetworks[0], fAccount)(input);
     const expected = {
       to: senderAddr,
       value: '0x0',
@@ -444,6 +529,10 @@ describe('verifyTransaction', () => {
         v: 37
       })
     ).toBe(true);
+  });
+
+  it('verifies a parsed signed transaction', () => {
+    expect(verifyTransaction(parseTransaction(fSignedTx))).toBe(true);
   });
 
   it('returns false for transactions with an invalid s value', () => {
@@ -509,5 +598,60 @@ describe('verifyTransaction', () => {
         nonce: 1
       })
     ).toBe(false);
+  });
+});
+
+describe('makeTxConfigFromSignedTx', () => {
+  it('creates a basic tx config from a signed tx', () => {
+    const address = '0x0961Ca10D49B9B8e371aA0Bcf77fE5730b18f2E4' as TAddress;
+    const account = { ...fAccounts[1], address };
+    const result = makeTxConfigFromSignedTx(fSignedTx, fAssets, fNetworks, [account]);
+    expect(result).toStrictEqual({
+      amount: '0.01',
+      asset: fAssets[1],
+      baseAsset: fAssets[1],
+      from: address,
+      networkId: 'Ropsten',
+      rawTransaction: {
+        chainId: 3,
+        data: '0x',
+        from: address,
+        gasLimit: '0x5208',
+        gasPrice: '0x012a05f200',
+        nonce: '0x06',
+        to: '0xB2BB2b958aFA2e96dAb3F3Ce7162B87dAea39017',
+        type: null,
+        value: '0x2386f26fc10000'
+      },
+      receiverAddress: '0xB2BB2b958aFA2e96dAb3F3Ce7162B87dAea39017',
+      senderAccount: account
+    });
+  });
+
+  it('creates a basic tx config from a signed EIP 1559 tx', () => {
+    const address = '0x0961Ca10D49B9B8e371aA0Bcf77fE5730b18f2E4' as TAddress;
+    const account = { ...fAccounts[1], address };
+    const result = makeTxConfigFromSignedTx(fSignedTxEIP1559, fAssets, fNetworks, [account]);
+    expect(result).toStrictEqual({
+      amount: '0.01',
+      asset: fAssets[1],
+      baseAsset: fAssets[1],
+      from: address,
+      networkId: 'Ropsten',
+      rawTransaction: {
+        chainId: 3,
+        data: '0x',
+        from: address,
+        gasLimit: '0x5208',
+        maxFeePerGas: '0x04a817c800',
+        maxPriorityFeePerGas: '0x3b9aca00',
+        nonce: '0x06',
+        to: '0xB2BB2b958aFA2e96dAb3F3Ce7162B87dAea39017',
+        type: 2,
+        value: '0x2386f26fc10000'
+      },
+      receiverAddress: '0xB2BB2b958aFA2e96dAb3F3Ce7162B87dAea39017',
+      senderAccount: account
+    });
   });
 });

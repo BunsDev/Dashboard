@@ -1,5 +1,3 @@
-import React from 'react';
-
 import { fireEvent, simpleRender } from 'test-utils';
 
 import VerticalStepper, { Props } from '../VerticalStepper';
@@ -43,5 +41,10 @@ describe('Button', () => {
     const component = container.querySelector('button');
     fireEvent.click(component!);
     expect(defaultProps.steps[0].onClick).toHaveBeenCalledTimes(1);
+  });
+
+  test('it renders error', async () => {
+    const { getByText } = getComponent({ ...defaultProps, error: true });
+    expect(getByText('An error occurred.', { exact: false })).toBeDefined();
   });
 });

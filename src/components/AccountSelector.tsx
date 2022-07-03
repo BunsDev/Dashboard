@@ -1,4 +1,4 @@
-import React, { useMemo } from 'react';
+import { useMemo } from 'react';
 
 import { formatUnits } from '@ethersproject/units';
 import { OptionProps } from 'react-select';
@@ -45,7 +45,7 @@ function AccountSelector({ accounts, asset, name, value, onSelect }: Props) {
       asset: {
         balance: formatUnits(
           asset ? getAccountBalance(a, asset) : getAccountBalance(a),
-          asset?.decimal || DEFAULT_ASSET_DECIMAL
+          asset?.decimal ?? DEFAULT_ASSET_DECIMAL
         ),
         assetUUID: asset ? asset.uuid : getBaseAsset(a)!.uuid,
         assetTicker: asset ? asset.ticker : getBaseAsset(a)!.ticker
@@ -69,7 +69,7 @@ function AccountSelector({ accounts, asset, name, value, onSelect }: Props) {
       options={options}
       onChange={handleFormUpdate}
       getOptionLabel={(option) => option.account.label}
-      optionComponent={({ data, selectOption }: OptionProps<TOption>) => {
+      optionComponent={({ data, selectOption }: OptionProps<TOption, false>) => {
         const { account, asset: selectedAsset } = data;
         const { address, label } = account;
         const { balance, assetUUID, assetTicker } = selectedAsset;

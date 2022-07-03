@@ -1,6 +1,6 @@
-import React from 'react';
+import { ComponentProps, ReactNode } from 'react';
 
-import { configureStore, DeepPartial } from '@reduxjs/toolkit';
+import { configureStore, PreloadedState } from '@reduxjs/toolkit';
 import { Provider } from 'react-redux';
 import { MemoryRouter as Router } from 'react-router-dom';
 import { ThemeProvider } from 'styled-components';
@@ -19,13 +19,13 @@ export const ProvidersWrapper = ({
   initialState = mockAppState(),
   initialRoute
 }: {
-  children: React.ReactNode;
+  children: ReactNode;
   initialState?: AppState;
   initialRoute?: string;
 }) => {
   const store = configureStore({
     reducer: rootReducer,
-    preloadedState: (initialState as unknown) as DeepPartial<AppState>
+    preloadedState: (initialState as unknown) as PreloadedState<AppState>
   });
   return (
     <Router initialEntries={initialRoute ? [initialRoute] : undefined}>
@@ -43,9 +43,9 @@ export const ProvidersWrapper = ({
  * @param state AppState
  */
 export const withOptions = (
-  state?: React.ComponentProps<typeof ProvidersWrapper>['initialState'],
-  route?: React.ComponentProps<typeof ProvidersWrapper>['initialRoute']
-) => (props: React.ComponentProps<typeof ProvidersWrapper>) => (
+  state?: ComponentProps<typeof ProvidersWrapper>['initialState'],
+  route?: ComponentProps<typeof ProvidersWrapper>['initialRoute']
+) => (props: ComponentProps<typeof ProvidersWrapper>) => (
   <ProvidersWrapper initialState={state} initialRoute={route} {...props}>
     {props.children}
   </ProvidersWrapper>

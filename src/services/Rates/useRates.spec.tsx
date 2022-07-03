@@ -1,4 +1,4 @@
-import React from 'react';
+import { FC } from 'react';
 
 import { renderHook } from '@testing-library/react-hooks';
 import { actionWithPayload, mockAppState, mockUseDispatch, ProvidersWrapper } from 'test-utils';
@@ -9,7 +9,7 @@ import { IRates } from '@types';
 import useRates from './useRates';
 
 const renderUseRates = ({ rates = {} as IRates } = {}) => {
-  const wrapper: React.FC = ({ children }) => (
+  const wrapper: FC = ({ children }) => (
     <ProvidersWrapper initialState={mockAppState({ settings: fSettings, rates })}>
       {children}
     </ProvidersWrapper>
@@ -43,6 +43,19 @@ describe('useRates', () => {
     const { result } = renderUseRates({ rates: fRates });
 
     expect(result.current.getAssetRateInCurrency(fAssets[3], 'EUR')).toEqual(0);
+    expect(mockDispatch).toHaveBeenLastCalledWith(actionWithPayload(fAssets[3]));
+  });
+
+  it('getAssetChange() gets correct change from settings', () => {
+    const { result } = renderUseRates({ rates: fRates });
+    expect(result.current.getAssetChange(fAssets[0])).toBe(fRates[fAssets[0].uuid].usd_24h_change);
+  });
+
+  it('getAssetChange() calls trackAsset on unknown assets', () => {
+    const mockDispatch = mockUseDispatch();
+    const { result } = renderUseRates({ rates: fRates });
+
+    expect(result.current.getAssetChange(fAssets[3])).toEqual(0);
     expect(mockDispatch).toHaveBeenLastCalledWith(actionWithPayload(fAssets[3]));
   });
 });

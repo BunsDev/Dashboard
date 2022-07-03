@@ -1,16 +1,15 @@
-import React from 'react';
+import { ComponentProps } from 'react';
 
-import { simpleRender } from 'test-utils';
+import { APP_STATE, mockAppState, simpleRender } from 'test-utils';
 
 import { MEMBERSHIP_CONFIG } from '@features/PurchaseMembership/config';
-import { fAccounts } from '@fixtures';
-import { StoreContext } from '@services';
+import { fAccounts, fAssets } from '@fixtures';
 import { translateRaw } from '@translations';
 import { noOp } from '@utils';
 
 import MembershipPurchaseForm from './MembershipPurchaseForm';
 
-const defaultProps: React.ComponentProps<typeof MembershipPurchaseForm> = {
+const defaultProps: ComponentProps<typeof MembershipPurchaseForm> = {
   account: fAccounts[0],
   membershipSelected: MEMBERSHIP_CONFIG.twelvemonths,
   isSubmitting: false,
@@ -18,19 +17,18 @@ const defaultProps: React.ComponentProps<typeof MembershipPurchaseForm> = {
   handleUserInputFormSubmit: noOp
 };
 
-function getComponent(props: React.ComponentProps<typeof MembershipPurchaseForm>) {
-  return simpleRender(
-    <StoreContext.Provider
-      value={
-        ({
-          accounts: fAccounts,
-          getDefaultAccount: () => fAccounts[0]
-        } as any) as any
-      }
-    >
-      <MembershipPurchaseForm {...props} />
-    </StoreContext.Provider>
-  );
+jest.mock('@services/EthService', () => ({
+  getNonce: jest.fn().mockReturnValue(1)
+}));
+
+function getComponent(props: ComponentProps<typeof MembershipPurchaseForm>) {
+  return simpleRender(<MembershipPurchaseForm {...props} />, {
+    initialState: mockAppState({
+      accounts: fAccounts,
+      assets: fAssets,
+      networks: APP_STATE.networks
+    })
+  });
 }
 
 describe('MembershipPurchaseForm', () => {

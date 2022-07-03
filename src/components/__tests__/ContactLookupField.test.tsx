@@ -1,5 +1,3 @@
-import React from 'react';
-
 import {
   actionWithPayload,
   fireEvent,
@@ -10,6 +8,7 @@ import {
 } from 'test-utils';
 
 import { fAssets, fContacts, fNetwork } from '@fixtures';
+import { ProviderHandler } from '@services/EthService';
 import { ExtendedContact, IReceiverAddress, LSKeys, TUuid } from '@types';
 import { generateDeterministicAddressUUID } from '@utils';
 
@@ -68,9 +67,7 @@ const mockMappedContacts: ExtendedContact[] = Object.entries(fContacts).map(([ke
 }));
 
 // mock domain resolving function
-jest.mock('@services/UnstoppableService', () => ({
-  getResolvedAddress: () => mockMappedContacts[0].address
-}));
+ProviderHandler.prototype.resolveName = jest.fn().mockResolvedValue(mockMappedContacts[0].address);
 
 describe('ContactLookupField', () => {
   test('it renders the placeholder when no value', async () => {
@@ -87,8 +84,9 @@ describe('ContactLookupField', () => {
     const { container } = getComponent(getDefaultProps(), contacts, output);
     const input = container.querySelector('input');
     fireEvent.click(input!);
+    input!.focus();
     fireEvent.change(input!, { target: { value: address } });
-    fireEvent.blur(input!);
+    input!.blur();
     const uuid = generateDeterministicAddressUUID('Ropsten', address);
     expect(mockDispatch).toHaveBeenCalledWith(
       actionWithPayload({
@@ -131,8 +129,9 @@ describe('ContactLookupField', () => {
     const { container } = getComponent(getDefaultProps(), contacts, output);
     const input = container.querySelector('input');
     fireEvent.click(input!);
+    input!.focus();
     fireEvent.change(input!, { target: { value: inputString } });
-    fireEvent.blur(input!);
+    input!.blur();
 
     expect(contacts).toHaveLength(0);
     expect(output.data.address.value).toBe(inputString);
@@ -148,6 +147,7 @@ describe('ContactLookupField', () => {
     const input = container.querySelector('input');
     fireEvent.click(input!);
     fireEvent.change(input!, { target: { value: inputString } });
+    input!.focus();
     await waitFor(() => fireEvent.keyDown(input!, enter));
 
     expect(contacts).toHaveLength(3);

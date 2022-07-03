@@ -10,9 +10,14 @@ export {
 } from './root.reducer';
 export { initialLegacyState } from './legacy.initialState';
 export { useDispatch };
-export { createNotification, updateNotification, selectNotifications } from './notification.slice';
-export { selectPassword } from './password.slice';
 export {
+  createNotification,
+  updateNotification,
+  selectNotifications,
+  displayNotification
+} from './notification.slice';
+export {
+  addNewAccounts,
   createAccount,
   createAccounts,
   resetAndCreateAccount,
@@ -21,7 +26,20 @@ export {
   updateAccount,
   updateAccounts,
   getAccounts,
-  addAccounts
+  selectCurrentAccounts,
+  selectAccountTxs,
+  selectTxsByStatus,
+  addTxToAccount,
+  removeAccountTx,
+  getStoreAccounts,
+  getDefaultAccount,
+  getMergedTxHistory,
+  getUserAssets,
+  startBalancesPolling,
+  stopBalancesPolling,
+  getAccountsAssets,
+  getSwapAssets,
+  getSwapAssetsByNetwork
 } from './account.slice';
 export {
   createContact,
@@ -37,7 +55,12 @@ export {
   updateUserActionStateByName,
   selectUserActions
 } from './userAction.slice';
-export { createContract, destroyContract, selectContracts } from './contract.slice';
+export {
+  createContract,
+  destroyContract,
+  selectContracts,
+  getContractName
+} from './contract.slice';
 export {
   createNetworks,
   createNetwork,
@@ -60,21 +83,23 @@ export {
   addAssetsFromAPI,
   fetchAssets,
   getAssets,
-  getBaseAssetByNetwork
+  getBaseAssetByNetwork,
+  getCoinGeckoAssetManifest,
+  getAssetsByNetwork,
+  getAssetByUUID
 } from './asset.slice';
 export {
   fetchMemberships,
-  setMemberships,
   setMembership,
   deleteMembership,
-  fetchError,
-  isMyCryptoMember,
+  setMembershipFetchState,
+  getIsMyCryptoMember,
   getMembershipState
 } from './membership.slice';
 export {
-  resetFavoritesTo,
-  addFavorites,
-  addFavorite,
+  resetCurrentsTo,
+  addCurrents,
+  addCurrent,
   addExcludedAsset,
   removeExcludedAsset,
   setLanguage,
@@ -82,22 +107,27 @@ export {
   setFiat,
   setDemoMode,
   getIsDemoMode,
-  addAccountsToFavorites,
+  addAccountsToCurrents,
   canTrackProductAnalytics,
   setProductAnalyticsAuthorisation,
-  getSettings
+  getAnalyticsUserID,
+  setAnalyticsUserID,
+  getSettings,
+  getFiatInformation
 } from './settings.slice';
-export { importSuccess, importError } from './import.slice';
+export { importSuccess, importError, importRequest, importComplete } from './import.slice';
 export { scanTokens, isScanning } from './tokenScanning.slice';
-export {
-  decrypt,
-  clearEncryptedData,
-  getDecryptionError,
-  getEncryptedData,
-  isEncrypted
-} from './vault.slice';
+export * from './tokenScanning.sagas';
 export { getAppState, useSelector } from './selectors';
 export { default as persistenceSlice } from './persistence.slice';
 export { getMemberships, membershipExpiryDate } from './membership.slice';
-export { setRates, getRates } from './rates.slice';
+export { setRates, getRates, startRatesPolling } from './rates.slice';
 export { trackAsset, getTrackedAssets } from './trackedAssets.slice';
+export { fetchHistory, fetchSchemaMeta, getTxHistory, getTxTypeMetas } from './txHistory.slice';
+export { fetchENS, getENSRecords, getENSFetched } from './ens.slice';
+export { getClaims, getAllClaims } from './claims.slice';
+export { restoreAccount, deleteAccount, getAccountUndoCache } from './accountUndo.slice';
+export { fetchNFTs, getFetched, getNFTsByCollection, getTotalValue } from './nft.slice';
+export { getBaseFee } from './gas.slice';
+export { checkForPromos, getPromoPoap, claimPromo } from './promoPoaps.slice';
+export { getWalletConnection, connectWallet } from './connections.slice';

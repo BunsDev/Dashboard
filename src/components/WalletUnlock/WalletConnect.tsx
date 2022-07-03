@@ -1,4 +1,4 @@
-import React, { useEffect } from 'react';
+import { useEffect } from 'react';
 
 import isEmpty from 'ramda/src/isEmpty';
 import styled, { css } from 'styled-components';
@@ -66,12 +66,16 @@ const SContainer = styled.div`
 const WalletService = WalletFactory[WalletId.WALLETCONNECT];
 
 export function WalletConnectDecrypt({ onUnlock, useWalletConnectProps }: OwnProps) {
-  const { state, requestConnection, signMessage } = useWalletConnectProps;
+  const { state, requestConnection, signMessage, kill } = useWalletConnectProps;
 
   useEffect(() => {
     if (!state.detectedAddress) return;
     onUnlock(
-      WalletService.init({ address: state.detectedAddress, signMessageHandler: signMessage })
+      WalletService.init({
+        address: state.detectedAddress,
+        signMessageHandler: signMessage,
+        killHandler: kill
+      })
     );
   }, [state.detectedAddress]);
 

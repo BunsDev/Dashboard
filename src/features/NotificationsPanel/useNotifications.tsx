@@ -1,13 +1,12 @@
 import {
-  createNotification,
+  displayNotification as displayNotificationRedux,
   selectNotifications,
   updateNotification,
   useDispatch,
   useSelector
 } from '@store';
 import { ExtendedNotification } from '@types';
-import { generateUUID, getTimeDifference, notUndefined } from '@utils';
-import { filter, last, pipe, sort } from '@vendor';
+import { getTimeDifference, notUndefined } from '@utils';
 
 import { notificationsConfigs } from './constants';
 
@@ -20,19 +19,25 @@ export interface ProviderState {
 
 function getCurrent(notifications: ExtendedNotification[]) {
   const latest = (a: ExtendedNotification, b: ExtendedNotification) => {
-    return new Date(a.dateDisplayed).getTime() - new Date(b.dateDisplayed).getTime();
+    if (notificationsConfigs[a.template].priority) {
+      return -1;
+    } else if (notificationsConfigs[b.template].priority) {
+      return 1;
+    }
+    return new Date(b.dateDisplayed).getTime() - new Date(a.dateDisplayed).getTime();
   };
 
   const canDisplay = (n: ExtendedNotification): boolean => {
     return (
       !n.dismissed &&
-      (notificationsConfigs[n.template].condition
+      (notificationsConfigs[n.template]?.condition
         ? notificationsConfigs[n.template].condition!(n)
         : true)
     );
   };
 
-  return pipe(sort(latest), filter(canDisplay), last)(notifications) as ExtendedNotification;
+  const result = notifications.filter(canDisplay).sort(latest);
+  return result[0];
 }
 
 function isValidNotification(n: ExtendedNotification) {
@@ -56,42 +61,7 @@ export function useNotifications() {
   const dispatch = useDispatch();
 
   const displayNotification = (templateName: string, templateData?: TObject) => {
-    // Dismiss previous notifications that need to be dismissed
-    if (!notificationsConfigs[templateName].preventDismisExisting) {
-      notifications
-        .filter((x) => notificationsConfigs[x.template].dismissOnOverwrite && !x.dismissed)
-        .forEach(dismissNotification);
-    }
-
-    // Create the notification object
-    const notification: ExtendedNotification = {
-      uuid: generateUUID(),
-      template: templateName,
-      templateData,
-      dateDisplayed: new Date(),
-      dismissed: false,
-      dateDismissed: undefined
-    };
-
-    // If notification with this template already exists update it,
-    // otherwise create a new one
-    const existingNotification = notifications.find((x) => x.template === notification.template);
-
-    if (existingNotification) {
-      /* Prevent displaying notifications that have been dismissed forever and repeating notifications
-         before their waiting period is over.*/
-      if (
-        notificationsConfigs[templateName].repeatInterval ||
-        notificationsConfigs[templateName].dismissForever
-      ) {
-        notification.dismissed = existingNotification.dismissed;
-        notification.dateDismissed = existingNotification.dateDismissed;
-      }
-
-      dispatch(updateNotification(notification));
-    } else {
-      dispatch(createNotification(notification));
-    }
+    dispatch(displayNotificationRedux({ templateName, templateData }));
   };
 
   const dismissNotification = (notif?: ExtendedNotification) => {

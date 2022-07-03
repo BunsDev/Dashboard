@@ -1,4 +1,4 @@
-import React, { useEffect } from 'react';
+import { useEffect } from 'react';
 
 import { createSignConfirmAndReceiptSteps } from '@components';
 import { default as GeneralStepper, IStepperPath } from '@components/GeneralStepper';
@@ -47,8 +47,11 @@ const PurchaseMembershipStepper = () => {
       actions: (formData: MembershipSimpleTxFormFull) => {
         initWith(
           () => {
-            const purchaseTx = { ...createPurchaseTx(formData), type: ITxType.PURCHASE_MEMBERSHIP };
-            const approveTx = { ...createApproveTx(formData), type: ITxType.APPROVAL };
+            const purchaseTx = {
+              ...createPurchaseTx(formData),
+              txType: ITxType.PURCHASE_MEMBERSHIP
+            };
+            const approveTx = { ...createApproveTx(formData), txType: ITxType.APPROVAL };
             return Promise.resolve(
               isERC20Asset(formData.asset) ? [approveTx, purchaseTx] : [purchaseTx]
             );
@@ -64,6 +67,7 @@ const PurchaseMembershipStepper = () => {
       backStepTitle: translateRaw('PURCHASE_MEMBERSHIP'),
       amount: membershipSelected!.price,
       account,
+      error,
       flowConfig: membershipSelected!,
       receiptTitle: translateRaw('PURCHASE_MEMBERSHIP_RECEIPT'),
       multiTxTitle: translateRaw('CONFIRM_TRANSACTION'),

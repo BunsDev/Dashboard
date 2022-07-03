@@ -9,24 +9,25 @@ import {
   Transaction
 } from '@ethersproject/transactions';
 import { formatEther } from '@ethersproject/units';
-import { Optional } from 'utility-types';
 
 import { CREATION_ADDRESS } from '@config';
-import { fetchGasPriceEstimates, getGasEstimate } from '@services/ApiService';
+import { fetchUniversalGasPriceEstimate, getGasEstimate } from '@services/ApiService';
 import { decodeTransfer, ERC20, getNonce, ProviderHandler } from '@services/EthService';
 import { decodeApproval } from '@services/EthService/contracts/token';
 import {
   getAssetByContractAndNetwork,
+  getAssetByUUID,
   getBaseAssetByNetwork,
   getNetworkByChainId,
   getStoreAccount
 } from '@services/Store';
 import {
   Asset,
+  DistributiveOmit,
   ExtendedAsset,
-  IFailedTxReceipt,
+  IFinishedTxReceipt,
   IPendingTxReceipt,
-  ISuccessfulTxReceipt,
+  ISimpleTxFormFull,
   ITxConfig,
   ITxData,
   ITxFromAddress,
@@ -34,6 +35,7 @@ import {
   ITxGasPrice,
   ITxHash,
   ITxHistoryStatus,
+  ITxMetadata,
   ITxNonce,
   ITxObject,
   ITxReceipt,
@@ -41,121 +43,179 @@ import {
   ITxToAddress,
   ITxType,
   ITxValue,
-  IUnknownTxReceipt,
   Network,
+  NetworkId,
   StoreAccount,
   TAddress
 } from '@types';
 import {
-  addHexPrefix,
   bigify,
-  bigNumGasLimitToViewable,
-  bigNumGasPriceToViewableGwei,
   bigNumValueToViewableEther,
   fromTokenBase,
-  gasPriceToBase,
-  getDecimalFromEtherUnit,
   isTransactionDataEmpty,
+  isType2Tx,
   toWei
 } from '@utils';
 import {
-  hexWeiToString,
   inputGasLimitToHex,
   inputGasPriceToHex,
-  inputNonceToHex
+  inputNonceToHex,
+  inputValueToHex
 } from '@utils/makeTransaction';
+import { mapObjIndexed } from '@vendor';
+
+import { isEIP1559Supported } from './eip1559';
 
 const N_DIV_2 = BigNumber.from(
   '0x7fffffffffffffffffffffffffffffff5d576e7357a4501ddfe92f46681b20a0'
 );
 
 type TxBeforeSender = Pick<ITxObject, 'to' | 'value' | 'data' | 'chainId'>;
-type TxBeforeGasPrice = Optional<ITxObject, 'nonce' | 'gasLimit' | 'gasPrice'>;
-type TxBeforeGasLimit = Optional<ITxObject, 'nonce' | 'gasLimit'>;
-type TxBeforeNonce = Optional<ITxObject, 'nonce'>;
+type TxBeforeGasPrice = DistributiveOmit<
+  ITxObject,
+  'nonce' | 'gasLimit' | 'gasPrice' | 'maxFeePerGas' | 'maxPriorityFeePerGas'
+> & {
+  nonce?: ITxNonce;
+  gasLimit?: ITxGasLimit;
+  gasPrice?: ITxGasPrice;
+  maxFeePerGas?: ITxGasPrice;
+  maxPriorityFeePerGas?: ITxGasPrice;
+};
+type TxBeforeGasLimit = DistributiveOmit<ITxObject, 'nonce' | 'gasLimit'> & {
+  nonce?: ITxNonce;
+  gasLimit?: ITxGasLimit;
+};
+type TxBeforeNonce = DistributiveOmit<ITxObject, 'nonce'> & { nonce?: ITxNonce };
+type TxResponseBeforeBroadcast = DistributiveOmit<TransactionResponse, 'confirmations' | 'wait'> & {
+  confirmations?: number;
+  wait?(confirmations?: number): Promise<TransactionReceipt>;
+};
+
+const formatGas = (tx: ITxObject) =>
+  isType2Tx(tx)
+    ? {
+        maxFeePerGas: BigNumber.from(tx.maxFeePerGas),
+        maxPriorityFeePerGas: BigNumber.from(tx.maxPriorityFeePerGas),
+        type: tx.type
+      }
+    : { gasPrice: BigNumber.from(tx.gasPrice) };
 
 export const toTxReceipt = (txHash: ITxHash, status: ITxHistoryStatus) => (
   txType: ITxType,
-  txConfig: ITxConfig
-): IPendingTxReceipt | ISuccessfulTxReceipt | IFailedTxReceipt | IUnknownTxReceipt => {
-  const { data, asset, baseAsset, amount, gasPrice, gasLimit, nonce } = txConfig;
+  txConfig: ITxConfig,
+  metadata?: ITxMetadata
+): ITxReceipt => {
+  const { rawTransaction, asset, baseAsset, amount } = txConfig;
+  const { data, gasLimit, nonce } = rawTransaction;
+
+  const gas = formatGas(rawTransaction);
 
   const txReceipt = {
+    ...gas,
     hash: txHash,
     from: getAddress(txConfig.from) as TAddress,
-    receiverAddress: getAddress(txConfig.receiverAddress) as TAddress,
+    receiverAddress: (txConfig.receiverAddress && getAddress(txConfig.receiverAddress)) as TAddress,
     gasLimit: BigNumber.from(gasLimit),
-    gasPrice: BigNumber.from(gasPrice),
     value: BigNumber.from(txConfig.rawTransaction.value),
-    to: getAddress(txConfig.rawTransaction.to) as TAddress,
+    to: (txConfig.rawTransaction.to && getAddress(txConfig.rawTransaction.to)) as TAddress,
+    nonce: BigNumber.from(nonce),
 
     status,
     amount,
-    nonce,
     data,
     txType,
     asset,
     baseAsset,
     blockNumber: 0,
-    timestamp: 0
+    timestamp: 0,
+    metadata
   };
   return txReceipt;
 };
 
 export const makePendingTxReceipt = (txHash: ITxHash) => (
   txType: ITxType,
-  txConfig: ITxConfig
+  txConfig: ITxConfig,
+  metadata?: ITxMetadata
 ): IPendingTxReceipt =>
-  toTxReceipt(txHash, ITxStatus.PENDING)(txType, txConfig) as IPendingTxReceipt;
+  toTxReceipt(txHash, ITxStatus.PENDING)(txType, txConfig, metadata) as IPendingTxReceipt;
 
 export const makeUnknownTxReceipt = (txHash: ITxHash) => (
   txType: ITxType,
-  txConfig: ITxConfig
+  txConfig: ITxConfig,
+  metadata?: ITxMetadata
 ): IPendingTxReceipt =>
-  toTxReceipt(txHash, ITxStatus.UNKNOWN)(txType, txConfig) as IPendingTxReceipt;
+  toTxReceipt(txHash, ITxStatus.UNKNOWN)(txType, txConfig, metadata) as IPendingTxReceipt;
 
 export const makeFinishedTxReceipt = (
   previousTxReceipt: IPendingTxReceipt,
   newStatus: ITxStatus.FAILED | ITxStatus.SUCCESS,
-  timestamp?: number,
-  blockNumber?: number,
+  timestamp: number = 0,
+  blockNumber: number = 0,
   gasUsed?: BigNumber,
   confirmations?: number
-): IFailedTxReceipt | ISuccessfulTxReceipt => ({
+): IFinishedTxReceipt => ({
   ...previousTxReceipt,
   status: newStatus,
-  timestamp: timestamp || 0,
-  blockNumber: blockNumber || 0,
+  timestamp: timestamp,
+  blockNumber: blockNumber,
   gasUsed,
   confirmations
 });
 
-const decodeTransaction = (signedTx: BytesLike) => {
-  const decodedTransaction = parseTransaction(signedTx);
-  const gasLimit = bigNumGasLimitToViewable(decodedTransaction.gasLimit.toString());
-  const gasPriceGwei = bigNumGasPriceToViewableGwei(decodedTransaction.gasPrice.toString());
-  const amountToSendEther = bigNumValueToViewableEther(decodedTransaction.value.toString());
-
-  return {
-    to: decodedTransaction.to,
-    from: decodedTransaction.from,
-    value: amountToSendEther.toString(),
-    gasLimit: gasLimit.toString(),
-    gasPrice: gasPriceGwei.toString(),
-    nonce: decodedTransaction.nonce,
-    data: decodedTransaction.data,
-    chainId: decodedTransaction.chainId
-  };
-};
+const getGasPriceFromTx = (tx: {
+  type?: number | null;
+  maxFeePerGas?: BigNumber | string;
+  maxPriorityFeePerGas?: BigNumber | string;
+  gasPrice?: BigNumber | string;
+}) =>
+  // Possibly revisit this when more tx types are available
+  tx.type && tx.type === 2
+    ? {
+        maxFeePerGas: hexlify(tx.maxFeePerGas!, { hexPad: 'left' }) as ITxGasPrice,
+        maxPriorityFeePerGas: hexlify(tx.maxPriorityFeePerGas!, { hexPad: 'left' }) as ITxGasPrice,
+        type: tx.type
+      }
+    : { gasPrice: hexlify(tx.gasPrice!, { hexPad: 'left' }) as ITxGasPrice };
 
 const buildRawTxFromSigned = (signedTx: BytesLike): ITxObject => {
   const decodedTx = parseTransaction(signedTx);
-  return ({
-    ...decodedTx,
+
+  return {
+    to: decodedTx.to as ITxToAddress | undefined,
+    from: decodedTx.from as TAddress,
+    data: decodedTx.data as ITxData,
+    ...getGasPriceFromTx(decodedTx),
     value: decodedTx.value.toHexString() as ITxValue,
+    nonce: hexlify(decodedTx.nonce) as ITxNonce,
     gasLimit: decodedTx.gasLimit.toHexString() as ITxGasLimit,
-    gasPrice: decodedTx.gasPrice.toHexString() as ITxGasPrice
-  } as unknown) as ITxObject;
+    chainId: decodedTx.chainId,
+    // @todo Cleaner way of doing this?
+    type: decodedTx.type as any
+  };
+};
+
+export const makeBasicTxConfig = (
+  rawTransaction: ITxObject,
+  account: StoreAccount,
+  amount: string
+): ITxConfig => {
+  const { to } = rawTransaction;
+  const { address, network } = account;
+  const baseAsset = getAssetByUUID(account.assets)(network.baseAsset)!;
+
+  const txConfig: ITxConfig = {
+    from: address,
+    amount,
+    receiverAddress: to,
+    senderAccount: account,
+    networkId: network.id,
+    asset: baseAsset,
+    baseAsset,
+    rawTransaction
+  };
+
+  return txConfig;
 };
 
 // needs testing
@@ -164,49 +224,38 @@ export const makeTxConfigFromSignedTx = (
   assets: ExtendedAsset[],
   networks: Network[],
   accounts: StoreAccount[],
-  oldTxConfig: ITxConfig = {} as ITxConfig
+  networkId?: NetworkId
 ): ITxConfig => {
-  const decodedTx = decodeTransaction(signedTx);
-  const networkDetected = getNetworkByChainId(decodedTx.chainId, networks);
+  const decodedTx = parseTransaction(signedTx);
+  const networkDetected = getNetworkByChainId(decodedTx.chainId, networks)!;
   const contractAsset = getAssetByContractAndNetwork(decodedTx.to, networkDetected)(assets);
   const baseAsset = getBaseAssetByNetwork({
     network: networkDetected || ({} as Network),
     assets
-  });
+  })!;
 
-  const rawTransaction = oldTxConfig.rawTransaction
-    ? oldTxConfig.rawTransaction
-    : buildRawTxFromSigned(signedTx);
+  const rawTransaction = buildRawTxFromSigned(signedTx);
 
-  const txConfig = {
+  const txConfig: ITxConfig = {
     rawTransaction,
     receiverAddress: (contractAsset
       ? decodeTransfer(decodedTx.data)._to
       : decodedTx.to) as TAddress,
     amount: contractAsset
       ? fromTokenBase(toWei(decodeTransfer(decodedTx.data)._value, 0), contractAsset.decimal)
-      : decodedTx.value,
-    network: networkDetected || oldTxConfig.network,
-    value: toWei(decodedTx.value, getDecimalFromEtherUnit('ether')).toString(),
-    asset: contractAsset || oldTxConfig.asset || baseAsset,
-    baseAsset: baseAsset || oldTxConfig.baseAsset,
-    senderAccount:
-      decodedTx.from && networkDetected
-        ? getStoreAccount(accounts)(decodedTx.from as TAddress, networkDetected.id) ||
-          oldTxConfig.senderAccount
-        : oldTxConfig.senderAccount,
-    gasPrice: gasPriceToBase(decodedTx.gasPrice).toString(),
-    gasLimit: decodedTx.gasLimit,
-    data: decodedTx.data,
-    nonce: decodedTx.nonce.toString(),
-    from: (decodedTx.from || oldTxConfig.from) as TAddress
+      : bigNumValueToViewableEther(decodedTx.value),
+    networkId: networkDetected?.id ?? networkId,
+    asset: contractAsset ?? baseAsset,
+    baseAsset,
+    senderAccount: getStoreAccount(accounts)(decodedTx.from as TAddress, networkDetected?.id)!,
+    from: decodedTx.from as TAddress
   };
   return txConfig;
 };
 
 // needs testing
-export const makeTxConfigFromTxResponse = (
-  decodedTx: TransactionResponse,
+export const makeTxConfigFromTx = (
+  decodedTx: TxResponseBeforeBroadcast | ITxObject,
   assets: ExtendedAsset[],
   network: Network,
   accounts: StoreAccount[]
@@ -226,29 +275,28 @@ export const makeTxConfigFromTxResponse = (
     contractAsset
   );
 
-  const txConfig = {
+  const hexConfig = { hexPad: 'left' as const };
+
+  const txConfig: ITxConfig = {
     rawTransaction: {
-      to: getAddress(to) as ITxToAddress,
-      value: hexlify(decodedTx.value) as ITxValue,
-      gasLimit: hexlify(decodedTx.gasLimit) as ITxGasLimit,
+      to: to && (getAddress(to) as ITxToAddress),
+      value: hexlify(decodedTx.value, hexConfig) as ITxValue,
+      gasLimit: hexlify(decodedTx.gasLimit, hexConfig) as ITxGasLimit,
       data: decodedTx.data as ITxData,
-      gasPrice: hexlify(decodedTx.gasPrice) as ITxGasPrice,
-      nonce: hexlify(decodedTx.nonce) as ITxNonce,
+      nonce: hexlify(decodedTx.nonce, hexConfig) as ITxNonce,
       chainId: decodedTx.chainId,
-      from: getAddress(decodedTx.from) as ITxFromAddress
+      from: (decodedTx.from && getAddress(decodedTx.from)) as ITxFromAddress,
+      ...getGasPriceFromTx(decodedTx),
+      // @todo Cleaner way of doing this?
+      type: decodedTx.type as any
     },
-    receiverAddress: getAddress(receiverAddress) as TAddress,
+    receiverAddress: receiverAddress && (getAddress(receiverAddress) as TAddress),
     amount,
-    network,
-    value: BigNumber.from(decodedTx.value).toString(),
+    networkId: network.id,
     asset,
     baseAsset,
     senderAccount: getStoreAccount(accounts)(decodedTx.from as TAddress, network.id)!,
-    gasPrice: decodedTx.gasPrice.toString(),
-    gasLimit: decodedTx.gasLimit.toString(),
-    data: decodedTx.data,
-    nonce: decodedTx.nonce.toString(),
-    from: getAddress(decodedTx.from) as TAddress
+    from: (decodedTx.from && getAddress(decodedTx.from)) as TAddress
   };
   return txConfig;
 };
@@ -263,37 +311,33 @@ export const makeTxConfigFromTxReceipt = (
   const baseAsset = getBaseAssetByNetwork({
     network,
     assets
-  });
+  })!;
+
+  const receiver = contractAsset ? decodeTransfer(txReceipt.data)._to : txReceipt.to;
 
   const txConfig = {
     rawTransaction: {
-      to: getAddress(txReceipt.to),
-      value: BigNumber.from(txReceipt.value).toHexString(),
-      gasLimit: BigNumber.from(txReceipt.gasLimit).toHexString(),
-      data: txReceipt.data,
-      gasPrice: BigNumber.from(txReceipt.gasPrice).toHexString(),
-      nonce: BigNumber.from(txReceipt.nonce).toHexString(),
+      to: txReceipt.to && (getAddress(txReceipt.to) as TAddress),
+      value: BigNumber.from(txReceipt.value).toHexString() as ITxValue,
+      gasLimit: BigNumber.from(txReceipt.gasLimit).toHexString() as ITxGasLimit,
+      data: txReceipt.data as ITxData,
+      ...getGasPriceFromTx(txReceipt),
+      nonce: BigNumber.from(txReceipt.nonce).toHexString() as ITxNonce,
       chainId: network.chainId,
-      from: getAddress(txReceipt.from)
+      from: getAddress(txReceipt.from) as TAddress,
+      // @todo Cleaner way of doing this?
+      type: txReceipt.type as any
     },
-    receiverAddress: getAddress(
-      contractAsset ? decodeTransfer(txReceipt.data)._to : txReceipt.to
-    ) as TAddress,
+    receiverAddress: receiver && (getAddress(receiver) as TAddress),
     amount: contractAsset
       ? fromTokenBase(toWei(decodeTransfer(txReceipt.data)._value, 0), contractAsset.decimal)
       : txReceipt.amount,
-    network,
-    value: BigNumber.from(txReceipt.value).toString(),
-    asset: contractAsset || baseAsset,
+    networkId: network.id,
+    asset: contractAsset ?? baseAsset,
     baseAsset,
-    senderAccount: getStoreAccount(accounts)(txReceipt.from, network.id),
-    gasPrice: BigNumber.from(txReceipt.gasPrice).toString(),
-    gasLimit: BigNumber.from(txReceipt.gasLimit).toString(),
-    data: txReceipt.data,
-    nonce: txReceipt.nonce,
-    from: getAddress(txReceipt.from)
+    senderAccount: getStoreAccount(accounts)(txReceipt.from, network.id)!,
+    from: getAddress(txReceipt.from) as TAddress
   };
-  // @ts-expect-error Ignore possible missing senderAccount for now
   return txConfig;
 };
 
@@ -323,12 +367,12 @@ export const makeTxItem = (
 export const deriveTxFields = (
   ercType: ERCType,
   data: ITxData,
-  toAddress: ITxToAddress,
+  toAddress: ITxToAddress | undefined,
   value: ITxValue,
   baseAsset: Asset,
   contractAsset?: Asset
 ) => {
-  const isERC20 = ercType !== ERCType.NONE;
+  const isERC20 = ercType === ERCType.TRANSFER || ercType === ERCType.APPROVAL;
   const { to, amount: rawAmount, receiverAddress } = deriveTxRecipientsAndAmount(
     ercType,
     data,
@@ -366,12 +410,14 @@ export const guessERC20Type = (data: string): ERCType => {
 export const deriveTxRecipientsAndAmount = (
   ercType: ERCType,
   data: ITxData,
-  toAddress: ITxToAddress,
+  toAddress: ITxToAddress | undefined,
   value: ITxValue
 ) => {
   switch (ercType) {
     case ERCType.TRANSFER: {
-      const { _to, _value } = decodeTransfer(data);
+      const { _to, _value }: { _to: ITxToAddress | undefined; _value: ITxValue } = decodeTransfer(
+        data
+      );
       return { to: toAddress, amount: _value, receiverAddress: _to };
     }
 
@@ -391,27 +437,24 @@ export const appendSender = (senderAddress: ITxFromAddress) => (
   };
 };
 
-export const appendGasPrice = (network: Network) => async (
+export const appendGasPrice = (network: Network, account: StoreAccount) => async (
   tx: TxBeforeGasPrice
 ): Promise<TxBeforeGasLimit> => {
   // Respect gas price if present
-  if (tx.gasPrice) {
+  if (tx.gasPrice || (tx.maxFeePerGas && tx.maxPriorityFeePerGas)) {
     return tx as TxBeforeGasLimit;
   }
-  const gasPrice = await fetchGasPriceEstimates(network)
-    .then(({ fast }) => fast.toString())
-    .then(inputGasPriceToHex)
-    .then(hexWeiToString)
-    .then((v) => bigify(v).toString(16))
-    .then(addHexPrefix)
+  const gas = await fetchUniversalGasPriceEstimate(network, account)
+    .then(({ estimate: r }) => mapObjIndexed((v) => v && inputGasPriceToHex(v), r))
     .catch((err) => {
       throw new Error(`getGasPriceEstimate: ${err}`);
     });
 
+  // @todo Remove type cast if possible?
   return {
     ...tx,
-    gasPrice: gasPrice as ITxGasPrice
-  };
+    ...gas
+  } as TxBeforeGasLimit;
 };
 
 export const appendGasLimit = (network: Network) => async (
@@ -422,10 +465,7 @@ export const appendGasLimit = (network: Network) => async (
     return tx as TxBeforeNonce;
   }
   try {
-    const gasLimit = await getGasEstimate(network, tx)
-      .then(bigify)
-      .then((n) => n.multipliedBy(1.2).integerValue(7))
-      .then(inputGasLimitToHex);
+    const gasLimit = await getGasEstimate(network, tx).then(inputGasLimitToHex);
 
     return {
       ...tx,
@@ -453,7 +493,7 @@ export const appendNonce = (network: Network, senderAddress: TAddress) => async 
 };
 
 export const verifyTransaction = (transaction: Transaction): boolean => {
-  if (!transaction.r || !transaction.s || !transaction.v) {
+  if (!transaction.r || !transaction.s || transaction.v === undefined) {
     return false;
   }
 
@@ -481,4 +521,42 @@ export const checkRequiresApproval = async (
   const allowance = await provider.getTokenAllowance(token, owner, _spender);
   // If allowance is less than the value being sent, the approval is needed
   return bigify(allowance).lt(bigify(_value));
+};
+
+export const makeTxFromForm = (
+  form: Pick<
+    ISimpleTxFormFull,
+    | 'network'
+    | 'gasPrice'
+    | 'maxFeePerGas'
+    | 'maxPriorityFeePerGas'
+    | 'account'
+    | 'address'
+    | 'gasLimit'
+    | 'nonce'
+  >,
+  value: string,
+  data: ITxData
+): ITxObject => {
+  const gas =
+    form.account && isEIP1559Supported(form.network, form.account)
+      ? {
+          maxFeePerGas: inputGasPriceToHex(form.maxFeePerGas),
+          maxPriorityFeePerGas: inputGasPriceToHex(form.maxPriorityFeePerGas),
+          type: 2 as const
+        }
+      : {
+          gasPrice: inputGasPriceToHex(form.gasPrice)
+        };
+
+  return {
+    ...gas,
+    from: form.account?.address,
+    to: form.address as ITxToAddress,
+    value: inputValueToHex(value),
+    data: data,
+    gasLimit: inputGasLimitToHex(form.gasLimit),
+    nonce: inputNonceToHex(form.nonce),
+    chainId: form.network.chainId
+  };
 };

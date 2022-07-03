@@ -1,3 +1,4 @@
+import { getDerivationPath } from '@mycrypto/wallets';
 import { Reducer } from '@reduxjs/toolkit';
 import {
   createMigrate,
@@ -20,11 +21,11 @@ import storage from 'redux-persist/lib/storage';
 import { OmitByValue, ValuesType } from 'utility-types';
 
 import { defaultContacts } from '@database';
-import { DataStore, EncryptedDataStore, LocalStorage, LSKeys, NetworkId, TUuid } from '@types';
+import { DataStore, LocalStorage, LSKeys, NetworkId, TUuid } from '@types';
 import { arrayToObj, IS_DEV } from '@utils';
 import { dissoc, flatten, pipe, propEq, reject, values } from '@vendor';
 
-import { mergeAssets, mergeNetworks } from './helpers';
+import { generateCustomDPath, mergeAssets, mergeNetworks } from './helpers';
 
 export const REDUX_PERSIST_ACTION_TYPES = [FLUSH, REHYDRATE, PAUSE, PERSIST, PURGE, REGISTER];
 
@@ -54,7 +55,6 @@ const fromReduxStore: TransformInbound<
       return arrayToObj<NetworkId>('id')(slice);
     }
     case LSKeys.SETTINGS:
-    case LSKeys.PASSWORD:
     default:
       return slice;
   }
@@ -80,7 +80,6 @@ const fromPersistenceLayer: TransformOutbound<
     case LSKeys.NETWORKS:
       return Object.values(slice);
     case LSKeys.SETTINGS:
-    case LSKeys.PASSWORD:
     default:
       return slice;
   }
@@ -125,7 +124,8 @@ const customReconciler: StateReconciler<DataStore> = (inboundState, originalStat
  */
 const customDeserializer = (slice: ValuesType<LocalStorage>) => {
   if (typeof slice === 'string') {
-    if (slice === 'v1.0.0' || slice === 'v1.1.0' || slice === '') return slice;
+    if (slice === 'v2.0.0' || slice === 'v1.0.0' || slice === 'v1.1.0' || slice === '')
+      return slice;
     return JSON.parse(slice);
   } else {
     return slice;
@@ -159,7 +159,7 @@ export const migrations = {
     return {
       ...state,
       // @ts-expect-error rates are present in settings on data to be migrated, want to move it at root of persistence layer
-      rates: state.settings.rates && state.settings.rates,
+      rates: state.rates ? state.rates : state.settings.rates ? state.settings.rates : [],
       trackedAssets: state.trackedAssets ? state.trackedAssets : [],
       settings: dissoc('rates', state.settings)
     };
@@ -169,11 +169,32 @@ export const migrations = {
       ...state,
       settings: dissoc('inactivityTimer', state.settings)
     };
+  },
+  6: (state: DataStore) => {
+    return {
+      ...state,
+      // @ts-expect-error dPath is present on data to be migrated, want to remove it
+      accounts: state.accounts.map(({ dPath, ...account }) => {
+        if (!dPath) {
+          return account;
+        }
+        const result = getDerivationPath(dPath);
+        const [path, index] = result ?? generateCustomDPath(dPath);
+        return {
+          ...account,
+          path,
+          index
+        };
+      })
+    };
   }
 };
 
+// @ts-expect-error: bad type for migrations
+export const migrate = createMigrate(migrations, { debug: IS_DEV });
+
 export const APP_PERSIST_CONFIG: PersistConfig<DataStore> = {
-  version: 5,
+  version: 6,
   key: 'Storage',
   keyPrefix: 'MYC_',
   storage,
@@ -183,22 +204,8 @@ export const APP_PERSIST_CONFIG: PersistConfig<DataStore> = {
   // @ts-expect-error: deserialize is redux-persist internal
   deserialize: customDeserializer,
   debug: IS_DEV,
-  // @ts-expect-error: bad type for migrations
-  migrate: createMigrate(migrations, { debug: IS_DEV })
+  migrate
 };
 
 export const createPersistReducer = (reducer: Reducer<DataStore>) =>
   persistReducer(APP_PERSIST_CONFIG, reducer);
-
-export const VAULT_PERSIST_CONFIG: PersistConfig<EncryptedDataStore> = {
-  key: 'Vault',
-  keyPrefix: 'MYC_',
-  blacklist: ['error'],
-  storage,
-  // @ts-expect-error: deserialize is redux-persist internal
-  deserialize: customDeserializer,
-  debug: IS_DEV
-};
-
-export const createVaultReducer = (reducer: Reducer) =>
-  persistReducer(VAULT_PERSIST_CONFIG, reducer);

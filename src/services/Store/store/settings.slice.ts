@@ -1,8 +1,9 @@
 import { createAction, createSelector, createSlice, PayloadAction } from '@reduxjs/toolkit';
 import { put, select, takeLatest } from 'redux-saga/effects';
 
+import { Fiats } from '@config';
 import { LSKeys, TFiatTicker, TUuid } from '@types';
-import { equals, findIndex } from '@vendor';
+import { equals, findIndex, uniq } from '@vendor';
 
 import { initialLegacyState } from './legacy.initialState';
 import { getAppState } from './selectors';
@@ -15,13 +16,13 @@ const slice = createSlice({
   name: sliceName,
   initialState,
   reducers: {
-    addFavorite(state, action: PayloadAction<TUuid>) {
+    addCurrent(state, action: PayloadAction<TUuid>) {
       state.dashboardAccounts.push(action.payload);
     },
-    addFavorites(state, action: PayloadAction<TUuid[]>) {
-      state.dashboardAccounts = [...state.dashboardAccounts, ...action.payload];
+    addCurrents(state, action: PayloadAction<TUuid[]>) {
+      state.dashboardAccounts = uniq([...state.dashboardAccounts, ...action.payload]);
     },
-    resetFavoritesTo(state, action: PayloadAction<TUuid[]>) {
+    resetCurrentsTo(state, action: PayloadAction<TUuid[]>) {
       state.dashboardAccounts = action.payload;
     },
     addExcludedAsset(state, action: PayloadAction<TUuid>) {
@@ -42,20 +43,24 @@ const slice = createSlice({
     },
     setProductAnalyticsAuthorisation(state, action: PayloadAction<boolean>) {
       state.canTrackProductAnalytics = action.payload;
+    },
+    setAnalyticsUserID(state, action: PayloadAction<string>) {
+      state.analyticsUserID = action.payload;
     }
   }
 });
 
 export const {
-  addFavorite,
-  addFavorites,
-  resetFavoritesTo,
+  addCurrent,
+  addCurrents,
+  resetCurrentsTo,
   setLanguage,
   setFiat,
   addExcludedAsset,
   removeExcludedAsset,
   setDemoMode,
-  setProductAnalyticsAuthorisation
+  setProductAnalyticsAuthorisation,
+  setAnalyticsUserID
 } = slice.actions;
 
 export default slice;
@@ -63,34 +68,36 @@ export default slice;
 /**
  * Selectors
  */
-export const getSettings = createSelector(getAppState, (s) => s[slice.name]);
-export const getFavorites = createSelector(getSettings, (s) => s.dashboardAccounts);
+export const getSettings = createSelector(getAppState, (s) => s.settings);
+export const getCurrents = createSelector(getSettings, (s) => s.dashboardAccounts);
 export const getLanguage = createSelector(getSettings, (s) => s.language);
 export const getFiat = createSelector(getSettings, (s) => s.fiatCurrency);
+export const getFiatInformation = createSelector(getSettings, (s) => Fiats[s.fiatCurrency]);
 export const getExcludedAssets = createSelector(getSettings, (s) => s.excludedAssets);
 export const getIsDemoMode = createSelector(getSettings, (s) => s.isDemoMode);
 export const canTrackProductAnalytics = createSelector(
   getSettings,
   (s) => s.canTrackProductAnalytics
 );
+export const getAnalyticsUserID = createSelector(getSettings, (s) => s.analyticsUserID);
 /**
  * Actions
  */
-export const addAccountsToFavorites = createAction<TUuid[]>(`${slice.name}/addAccountsToFavorites`);
+export const addAccountsToCurrents = createAction<TUuid[]>(`${slice.name}/addAccountsToCurrents`);
 
 /**
  * Sagas
  */
 export function* settingsSaga() {
-  yield takeLatest(addAccountsToFavorites.type, handleAddAccountsToFavorites);
+  yield takeLatest(addAccountsToCurrents.type, handleAddAccountsToCurrents);
 }
 
-export function* handleAddAccountsToFavorites({ payload }: PayloadAction<TUuid[]>) {
+export function* handleAddAccountsToCurrents({ payload }: PayloadAction<TUuid[]>) {
   const isDemoMode = yield select(getIsDemoMode);
   if (isDemoMode) {
     yield put(slice.actions.setDemoMode(false));
-    yield put(slice.actions.resetFavoritesTo(payload));
+    yield put(slice.actions.resetCurrentsTo(payload));
   } else {
-    yield put(slice.actions.addFavorites(payload));
+    yield put(slice.actions.addCurrents(payload));
   }
 }

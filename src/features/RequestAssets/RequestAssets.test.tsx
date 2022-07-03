@@ -1,26 +1,18 @@
-import React from 'react';
+import { mockAppState, simpleRender } from 'test-utils';
 
-import { simpleRender } from 'test-utils';
-
-import { fAccounts } from '@fixtures';
-import { StoreContext } from '@services';
+import { APP_STATE, fAccounts, fAssets } from '@fixtures';
 import { translateRaw } from '@translations';
 
 import RequestAssets from './RequestAssets';
 
 function getComponent() {
-  return simpleRender(
-    <StoreContext.Provider
-      value={
-        ({
-          accounts: fAccounts,
-          getDefaultAccount: () => fAccounts[0]
-        } as any) as any
-      }
-    >
-      <RequestAssets />
-    </StoreContext.Provider>
-  );
+  return simpleRender(<RequestAssets />, {
+    initialState: mockAppState({
+      accounts: [fAccounts[0]],
+      assets: fAssets,
+      networks: APP_STATE.networks
+    })
+  });
 }
 
 describe('RequestAssets', () => {

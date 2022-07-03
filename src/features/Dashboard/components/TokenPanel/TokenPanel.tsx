@@ -1,8 +1,14 @@
-import React, { useContext, useState } from 'react';
+import { useState } from 'react';
 
-import { StoreContext, useRates, useSettings } from '@services';
-import { isNotExcludedAsset } from '@services/Store/helpers';
-import { isScanning as isScanningSelector, scanTokens, useDispatch, useSelector } from '@store';
+import { useRates, useSettings } from '@services';
+import { calculateTotals, isNotExcludedAsset } from '@services/Store/helpers';
+import {
+  isScanning as isScanningSelector,
+  scanTokens,
+  selectCurrentAccounts,
+  useDispatch,
+  useSelector
+} from '@store';
 import { ExtendedAsset, StoreAsset } from '@types';
 
 import { AddToken } from './AddToken';
@@ -10,7 +16,7 @@ import { TokenDetails } from './TokenDetails';
 import { TokenList } from './TokenList';
 
 export function TokenPanel() {
-  const { totals, currentAccounts } = useContext(StoreContext);
+  const currentAccounts = useSelector(selectCurrentAccounts);
   const isScanning = useSelector(isScanningSelector);
   const dispatch = useDispatch();
   const { settings } = useSettings();
@@ -18,7 +24,7 @@ export function TokenPanel() {
   const [showDetailsView, setShowDetailsView] = useState(false);
   const [showAddToken, setShowAddToken] = useState(false);
   const [currentToken, setCurrentToken] = useState<StoreAsset>();
-  const allTokens = totals(currentAccounts)
+  const allTokens = calculateTotals(currentAccounts)
     .reduce((acc, a) => {
       if (a.contractAddress) {
         acc.push({ ...a, rate: getAssetRate(a) || 0 });

@@ -1,24 +1,25 @@
-import BN from 'bn.js';
-import { addHexPrefix } from 'ethereumjs-util';
+import BigNumber from 'bignumber.js';
 
 import { WALLET_STEPS } from '@components';
 import { DEFAULT_ASSET_DECIMAL } from '@config';
-import { getAssetByTicker, getAssetByUUID } from '@services';
+import { getAssetByTicker, getAssetByUUID, UniversalGasEstimationResult } from '@services';
 import {
-  IHexStrTransaction,
   ISwapAsset,
   ITxConfig,
-  ITxData,
   ITxGasLimit,
-  ITxGasPrice,
-  ITxNonce,
   ITxObject,
-  ITxValue,
   StoreAccount,
   StoreAsset,
   TUuid
 } from '@types';
-import { hexToString, toTokenBase, weiToFloat } from '@utils';
+import {
+  bigify,
+  calculateMinMaxFee,
+  inputGasPriceToHex,
+  totalTxFeeToString,
+  toTokenBase,
+  weiToFloat
+} from '@utils';
 
 export const makeSwapTxConfig = (assets: StoreAsset[]) => (
   transaction: ITxObject,
@@ -26,40 +27,58 @@ export const makeSwapTxConfig = (assets: StoreAsset[]) => (
   fromAsset: ISwapAsset,
   fromAmount: string
 ): ITxConfig => {
-  const { gasPrice, gasLimit, nonce, data } = transaction;
   const { address, network } = account;
   const baseAsset = getAssetByUUID(assets)(network.baseAsset)!;
-  const asset = getAssetByTicker(assets)(fromAsset.ticker) || baseAsset;
+  const asset = getAssetByTicker(assets)(fromAsset.ticker) ?? baseAsset;
 
   const txConfig: ITxConfig = {
     from: address,
     amount: fromAmount,
     receiverAddress: address,
     senderAccount: account,
-    network,
+    networkId: network.id,
     asset,
     baseAsset,
-    gasPrice: hexToString(gasPrice),
-    gasLimit: hexToString(gasLimit),
-    value: fromAmount,
-    nonce: hexToString(nonce),
-    data,
     rawTransaction: Object.assign({}, transaction, { chainId: network.chainId })
   };
 
   return txConfig;
 };
 
-export const makeTxObject = (config: ITxConfig): IHexStrTransaction => {
-  return {
-    to: config.receiverAddress,
-    chainId: config.network.chainId,
-    data: config.data as ITxData,
-    value: addHexPrefix(new BN(config.amount).toString(16)) as ITxValue,
-    gasPrice: addHexPrefix(new BN(config.gasPrice).toString(16)) as ITxGasPrice,
-    gasLimit: config.gasLimit as ITxGasLimit,
-    nonce: config.nonce as ITxNonce
-  };
+export const getEstimatedGasFee = ({
+  tradeGasLimit,
+  approvalGasLimit,
+  baseAssetRate,
+  gas
+}: {
+  tradeGasLimit?: ITxGasLimit;
+  approvalGasLimit?: ITxGasLimit;
+  baseAssetRate?: number;
+  gas?: { estimate: UniversalGasEstimationResult; baseFee?: BigNumber };
+}) => {
+  if (tradeGasLimit && gas?.estimate.maxFeePerGas) {
+    const { avgFee } = calculateMinMaxFee({
+      baseFee: gas.baseFee,
+      ...gas.estimate,
+      gasLimit:
+        tradeGasLimit &&
+        bigify(tradeGasLimit)
+          .plus(approvalGasLimit ? approvalGasLimit : 0)
+          .toString(),
+      baseAssetRate
+    });
+
+    return avgFee.toFixed(6);
+  }
+
+  return (
+    gas?.estimate.gasPrice &&
+    tradeGasLimit &&
+    totalTxFeeToString(
+      inputGasPriceToHex(gas.estimate.gasPrice),
+      bigify(tradeGasLimit).plus(approvalGasLimit ? approvalGasLimit : 0)
+    )
+  );
 };
 
 // filter accounts based on wallet type and sufficient balance
@@ -96,7 +115,7 @@ export const getAccountsWithAssetBalance = (
 
     const baseAssetUsed =
       asset.uuid === baseAssetUuid
-        ? toTokenBase(fromAmount, asset.decimal || DEFAULT_ASSET_DECIMAL)
+        ? toTokenBase(fromAmount, asset.decimal ?? DEFAULT_ASSET_DECIMAL)
         : 0;
 
     const baseAssetBalance = weiToFloat(

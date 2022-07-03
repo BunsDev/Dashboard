@@ -22,17 +22,18 @@ export enum KB_HELP_ARTICLE {
   STAYING_SAFE = 'staying-safe',
   BUY_CRYPTO = 'how-to/getting-started/how-to-buy-ether-with-usd',
   MEMBERSHIP_INFO = 'general-knowledge/about-mycrypto/membership-information',
-  MEMBERSHIP_REQUEST_REWARDS = 'general-knowledge/about-mycrypto/membership-information#how-to-receive-your-physical-rewards',
   HOW_TO_USE_ZAPPER = 'how-to/defi/how-to-use-zapper',
   WHERE_TO_GET_TESTNET_ETHER = 'how-to/getting-started/where-to-get-testnet-ether',
-  WHAT_IS_SCREEN_LOCK = 'how-to/accessing-wallet/what-is-screen-lock',
   WHAT_IS_WALLETCONNECT = 'general-knowledge/ethereum-blockchain/what-is-walletconnect',
   HOW_TO_USE_WALLETCONNECT = 'how-to/accessing-wallet/how-to-use-walletconnect-with-mycrypto',
   TREZOR_TROUBLESHOOTING = 'troubleshooting/hardware-wallets/trezor/unable-to-connect-trezor-hardware-wallet-on-mycrypto',
-  LEDGER_TROUBLESHOOTING = 'troubleshooting/accessing-wallet/ledger-hardware-wallet-unable-to-connect-on-mycrypto',
+  LEDGER_TROUBLESHOOTING = 'troubleshooting/hardware-wallets/ledger/ledger-hardware-wallet-unable-to-connect-on-mycrypto',
   WHAT_ARE_PROTECTED_TRANSACTIONS = 'general-knowledge/about-mycrypto/what-are-protected-transactions',
   HOW_DOES_VIEW_ADDRESS_WORK = 'how-to/accessing-wallet/how-does-view-address-work',
-  WHY_IS_GAS = 'general-knowledge/ethereum-blockchain/why-is-gas'
+  WHY_IS_GAS = 'general-knowledge/ethereum-blockchain/why-is-gas',
+  HOW_TO_USE_MYCRYPTO_MORE_PRIVATELY = 'staying-safe/how-to-use-mycrypto-more-privately',
+  WHAT_IS_EIP1559 = 'general-knowledge/ethereum-blockchain/what-is-eip-1559',
+  WHAT_IS_CONTRACT_ABI = 'general-knowledge/ethereum-blockchain/what-is-contract-abi'
 }
 
 export enum HELP_ARTICLE {

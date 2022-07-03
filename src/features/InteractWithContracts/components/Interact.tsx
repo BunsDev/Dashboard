@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import { useEffect, useState } from 'react';
 
 import { Formik } from 'formik';
 import { RouteComponentProps, withRouter } from 'react-router-dom';
@@ -8,10 +8,13 @@ import { object, string } from 'yup';
 import {
   Button,
   ContractLookupField,
+  Icon,
   InlineMessage,
   InputField,
+  LinkApp,
   NetworkSelector
 } from '@components';
+import { getKBHelpArticle, KB_HELP_ARTICLE } from '@config';
 import { getNetworkById, isValidENSName, isValidETHAddress, useNetworks } from '@services';
 import { BREAK_POINTS, COLORS } from '@theme';
 import { translateRaw } from '@translations';
@@ -19,7 +22,7 @@ import {
   Contract,
   ExtendedContract,
   IReceiverAddress,
-  ITxConfig,
+  ISimpleTxForm,
   Network,
   StoreAccount,
   TAddress
@@ -124,7 +127,11 @@ interface Props {
   showGeneratedForm: boolean;
   account: StoreAccount;
   customContractName: string;
-  rawTransaction: ITxConfig;
+  nonce: string;
+  gasLimit: string;
+  gasPrice: string;
+  maxFeePerGas: string;
+  maxPriorityFeePerGas: string;
   handleContractSelected(contract: Contract | undefined): void;
   handleNetworkSelected(networkId: string): void;
   handleContractAddressChanged(address: string): void;
@@ -138,8 +145,12 @@ interface Props {
   handleInteractionFormWriteSubmit(submitedFunction: ABIItem): Promise<TObject>;
   handleAccountSelected(account: StoreAccount): void;
   handleSaveContractSubmit(): void;
-  handleGasSelectorChange(payload: ITxConfig): void;
+  handleGasSelectorChange(
+    payload: Partial<Pick<ISimpleTxForm, 'gasPrice' | 'maxFeePerGas' | 'maxPriorityFeePerGas'>>
+  ): void;
   handleDeleteContract(contractUuid: string): void;
+  handleGasLimitChange(payload: string): void;
+  handleNonceChange(payload: string): void;
 }
 
 const FormSchema = object().shape({
@@ -175,9 +186,15 @@ function Interact(props: CombinedProps) {
     handleAccountSelected,
     handleInteractionFormWriteSubmit,
     handleSaveContractSubmit,
-    rawTransaction,
+    nonce,
+    gasLimit,
+    gasPrice,
+    maxFeePerGas,
+    maxPriorityFeePerGas,
     handleGasSelectorChange,
-    handleDeleteContract
+    handleDeleteContract,
+    handleGasLimitChange,
+    handleNonceChange
   } = props;
 
   const [error, setError] = useState<string | undefined>(undefined);
@@ -346,7 +363,18 @@ function Interact(props: CombinedProps) {
             <FieldWrapper>
               <InputWrapper onClick={() => setWasContractInteracted(false)}>
                 <InputField
-                  label={translateRaw('CONTRACT_JSON')}
+                  name="abi"
+                  label={
+                    <>
+                      {translateRaw('CONTRACT_JSON')}
+                      <LinkApp
+                        href={getKBHelpArticle(KB_HELP_ARTICLE.WHAT_IS_CONTRACT_ABI)}
+                        isExternal={true}
+                      >
+                        <Icon width="16px" type="questionBlack" />
+                      </LinkApp>
+                    </>
+                  }
                   value={abi}
                   placeholder={`[{"type":"constructor","inputs":[{"name":"param1","type":"uint256","indexed":true}],"name":"Event"},{"type":"function","inputs":[{"name":"a","type":"uint256"}],"name":"foo","outputs":[]}]`}
                   onChange={({ target: { value } }) => {
@@ -407,10 +435,16 @@ function Interact(props: CombinedProps) {
                 handleAccountSelected={handleAccountSelected}
                 handleInteractionFormWriteSubmit={handleInteractionFormWriteSubmit}
                 network={network}
-                rawTransaction={rawTransaction}
                 handleGasSelectorChange={handleGasSelectorChange}
                 contractAddress={contractAddress}
                 interactionDataFromURL={interactionDataFromURL}
+                nonce={nonce}
+                gasLimit={gasLimit}
+                gasPrice={gasPrice}
+                maxFeePerGas={maxFeePerGas}
+                maxPriorityFeePerGas={maxPriorityFeePerGas}
+                handleNonceChange={handleNonceChange}
+                handleGasLimitChange={handleGasLimitChange}
               />
             )}
           </>

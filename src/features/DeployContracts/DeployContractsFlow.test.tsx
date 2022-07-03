@@ -1,45 +1,37 @@
-import React from 'react';
-
 import selectEvent from 'react-select-event';
-import { fireEvent, simpleRender, waitFor } from 'test-utils';
+import { APP_STATE, fireEvent, mockAppState, simpleRender, waitFor } from 'test-utils';
 
 import { DEFAULT_NETWORK } from '@config';
 import { fAccounts, fAssets } from '@fixtures';
-import { StoreContext } from '@services/Store';
 import { translateRaw } from '@translations';
+import { WalletId } from '@types';
 
 import DeployContractsFlow from './DeployContractsFlow';
 
 jest.mock('@vendor', () => {
   return {
     ...jest.requireActual('@vendor'),
-    // Since there are no nodes in our StoreContext,
-    // ethers will default to FallbackProvider
     FallbackProvider: jest.fn().mockImplementation(() => ({
-      estimateGas: jest.fn().mockImplementation(() => Promise.resolve(21000)),
-      getTransactionCount: jest.fn().mockImplementation(() => Promise.resolve(10))
-    }))
+      estimateGas: jest.fn().mockResolvedValue(21000),
+      getTransactionCount: jest.fn().mockResolvedValue(10),
+      getBlock: jest.fn().mockResolvedValue({
+        baseFeePerGas: '10000000000',
+        gasLimit: '15000000'
+      })
+    })),
+    getBalance: jest.fn().mockResolvedValue('10000000000')
   };
 });
 
 function getComponent() {
-  return simpleRender(
-    <StoreContext.Provider
-      value={
-        ({
-          assets: () => fAssets,
-          accounts: fAccounts,
-          userAssets: fAccounts.flatMap((a) => a.assets),
-          getDefaultAccount: () => undefined
-        } as any) as any
-      }
-    >
-      <DeployContractsFlow />
-    </StoreContext.Provider>,
-    {
-      initialRoute: '/deploy-contracts'
-    }
-  );
+  return simpleRender(<DeployContractsFlow />, {
+    initialRoute: '/deploy-contracts',
+    initialState: mockAppState({
+      accounts: [{ ...fAccounts[1], wallet: WalletId.LEDGER_NANO_S }],
+      assets: fAssets,
+      networks: APP_STATE.networks.map((n) => ({ ...n, supportsEIP1559: true }))
+    })
+  });
 }
 
 describe('DeployContractsFlow', () => {
@@ -49,7 +41,7 @@ describe('DeployContractsFlow', () => {
   });
 
   it('can submit form', async () => {
-    const { getByText, container } = getComponent();
+    const { getByText, getByDisplayValue, container } = getComponent();
 
     await selectEvent.openMenu(getByText(DEFAULT_NETWORK, { exact: false }));
 
@@ -70,6 +62,8 @@ describe('DeployContractsFlow', () => {
           '0x608060405234801561001057600080fd5b5060c78061001f6000396000f3fe6080604052348015600f57600080fd5b506004361060325760003560e01c80632e64cec11460375780636057361d146053575b600080fd5b603d607e565b6040518082815260200191505060405180910390f35b607c60048036036020811015606757600080fd5b81019080803590602001909291905050506087565b005b60008054905090565b806000819055505056fea2646970667358221220c9881e39a8354c748f8a6a5ac025e69ecd01234d361f842269e058dbde9e36db64736f6c63430007040033'
       }
     });
+
+    await waitFor(() => expect(getByDisplayValue('20')).toBeInTheDocument());
 
     fireEvent.click(getByText(translateRaw('NAV_DEPLOYCONTRACT')));
 

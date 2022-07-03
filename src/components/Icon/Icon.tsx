@@ -1,4 +1,4 @@
-import React from 'react';
+import { ComponentProps } from 'react';
 
 import shouldForwardProp from '@styled-system/should-forward-prop';
 import InlineSVG from 'react-inlinesvg';
@@ -18,6 +18,7 @@ import genericAssetIcon from '@assets/generic.svg';
 import add from '@assets/icons/actions/add.svg';
 import addBold from '@assets/icons/actions/add_bold.svg';
 import back from '@assets/icons/actions/back.svg';
+import completedTaskIcon from '@assets/icons/actions/completed.svg';
 import confirm from '@assets/icons/actions/confirm.svg';
 import downCaret from '@assets/icons/actions/down-caret.svg';
 import edit from '@assets/icons/actions/edit.svg';
@@ -35,12 +36,14 @@ import feedback from '@assets/icons/feedback.svg';
 import navAddAccount from '@assets/icons/navigation/add-account.svg';
 import navAssets from '@assets/icons/navigation/assets.svg';
 import navBitcoin from '@assets/icons/navigation/bitcoin.svg';
+import navBlog from '@assets/icons/navigation/blog.svg';
 import navBroadcastTransaction from '@assets/icons/navigation/broadcast-transaction.svg';
 import navBuy from '@assets/icons/navigation/buy.svg';
 import navClose from '@assets/icons/navigation/close.svg';
 import navCoinbase from '@assets/icons/navigation/coinbase.svg';
 import navDeployContracts from '@assets/icons/navigation/deploy-contracts.svg';
 import navDesktop from '@assets/icons/navigation/desktop.svg';
+import navDisclaimer from '@assets/icons/navigation/disclaimer.svg';
 import navDiscord from '@assets/icons/navigation/discord.svg';
 import navEns from '@assets/icons/navigation/ens.svg';
 import navEthereum from '@assets/icons/navigation/ethereum.svg';
@@ -49,21 +52,20 @@ import navFaucet from '@assets/icons/navigation/faucet.svg';
 import navGithub from '@assets/icons/navigation/github.svg';
 import navHelp from '@assets/icons/navigation/help.svg';
 import navHome from '@assets/icons/navigation/home.svg';
+import navInstagram from '@assets/icons/navigation/instagram.svg';
 import navInteractWithContracts from '@assets/icons/navigation/interact-with-contracts.svg';
 import navLedger from '@assets/icons/navigation/ledger.svg';
 import navLinkedin from '@assets/icons/navigation/linkedin.svg';
 import navMedium from '@assets/icons/navigation/medium.svg';
 import navMembership from '@assets/icons/navigation/membership.svg';
 import navMenu from '@assets/icons/navigation/menu.svg';
-import navMigrateAnt from '@assets/icons/navigation/migrate-ant.svg';
-import navMigrateGnt from '@assets/icons/navigation/migrate-gnt.svg';
-import navMigrateLend from '@assets/icons/navigation/migrate-lend.svg';
-import navMigrateRep from '@assets/icons/navigation/migrate-rep.svg';
+import navMigrate from '@assets/icons/navigation/migrate.svg';
 import navNew from '@assets/icons/navigation/new.svg';
 import navNewTab from '@assets/icons/navigation/newTab.svg';
+import navNftDashboard from '@assets/icons/navigation/nft-dashboard.svg';
 import navPress from '@assets/icons/navigation/press.svg';
 import navPrivacy from '@assets/icons/navigation/privacy.svg';
-import navQuiknode from '@assets/icons/navigation/quiknode.svg';
+import navQuicknode from '@assets/icons/navigation/quicknode.svg';
 import navReceive from '@assets/icons/navigation/receive.svg';
 import navReddit from '@assets/icons/navigation/reddit.svg';
 import navSend from '@assets/icons/navigation/send.svg';
@@ -95,10 +97,13 @@ import arrowRight from '@assets/images/arrow-right.svg';
 import zeroxLogo from '@assets/images/credits/credits-0x.svg';
 import coinGeckoLogo from '@assets/images/credits/credits-coingecko.svg';
 import nansenLogo from '@assets/images/credits/credits-nansen.svg';
+import openSeaLogo from '@assets/images/credits/credits-opensea.svg';
 import zapperLogo from '@assets/images/defizap/zapperLogo.svg';
 import ensLogo from '@assets/images/ens/ens-icon.svg';
+import givLogo from '@assets/images/giveth-logo.svg';
 import golemLogo from '@assets/images/gol-logo.png';
 import addressBookIcon from '@assets/images/icn-address-book.svg';
+import buyIcon from '@assets/images/icn-buy.svg';
 import check from '@assets/images/icn-check.svg';
 import trezorLgIcon from '@assets/images/icn-connect-trezor-new.svg';
 import experience from '@assets/images/icn-experience.svg';
@@ -120,13 +125,16 @@ import openedEye from '@assets/images/icn-show-eye.svg';
 import statusBadgeDeclined from '@assets/images/icn-status-badge-declined.svg';
 import statusBadgePending from '@assets/images/icn-status-badge-pending.svg';
 import statusBadgeSuccess from '@assets/images/icn-status-badge-success.svg';
+import swapFlip from '@assets/images/icn-swap-flip.svg';
+import swap from '@assets/images/icn-swap.svg';
 import warning from '@assets/images/icn-warning.svg';
 import lendLogo from '@assets/images/lend-logo.png';
 import linkOutIcon from '@assets/images/link-out.svg';
 import membership from '@assets/images/membership/membership-none.svg';
+import nodeLogo from '@assets/images/node-logo.svg';
 import repLogo from '@assets/images/rep-logo.svg';
-import swap from '@assets/images/swap copy.svg';
 import uniLogo from '@assets/images/uni-logo.png';
+import gridPlusLgIcon from '@assets/images/wallets/gridplus-large.svg';
 import ledgerIcon from '@assets/images/wallets/ledger.svg';
 import trezorIcon from '@assets/images/wallets/trezor.svg';
 
@@ -151,6 +159,9 @@ const svgIcons = {
   'faucet-icon': faucetIcon,
   'down-caret': downCaret,
   'link-out': linkOutIcon,
+  'swap-flip': swapFlip,
+  'action-completed': completedTaskIcon,
+  buy: buyIcon,
 
   /* Tooltips*/
   informational,
@@ -166,6 +177,7 @@ const svgIcons = {
   'ledger-icon-lg': ledgerLgIcon,
   'trezor-icon': trezorIcon,
   'trezor-icon-lg': trezorLgIcon,
+  'gridplus-icon-lg': gridPlusLgIcon,
   membership,
   feedback,
   newsletter,
@@ -182,11 +194,13 @@ const svgIcons = {
 
   /* Partner Icons */
   nansenLogo,
+  openSeaLogo,
   ensLogo,
   coinGeckoLogo,
   zapperLogo,
   'rep-logo': repLogo,
   zeroxLogo,
+  givLogo,
 
   /* Social Icons */
   coinmarketcap,
@@ -229,7 +243,7 @@ const svgIcons = {
   'nav-support-us': navSupportUs,
   'nav-ledger': navLedger,
   'nav-trezor': navTrezor,
-  'nav-quiknode': navQuiknode,
+  'nav-quicknode': navQuicknode,
   'nav-coinbase': navCoinbase,
   'nav-unstoppable': navUnstoppable,
   'nav-settings': navSettings,
@@ -243,6 +257,7 @@ const svgIcons = {
   'nav-twitter': navTwitter,
   'nav-facebook': navFacebook,
   'nav-medium': navMedium,
+  'nav-instagram': navInstagram,
   'nav-linkedin': navLinkedin,
   'nav-github': navGithub,
   'nav-reddit': navReddit,
@@ -250,15 +265,15 @@ const svgIcons = {
   'nav-team': navTeam,
   'nav-press': navPress,
   'nav-privacy': navPrivacy,
+  'nav-blog': navBlog,
   'nav-new-tab': navNewTab,
   'nav-desktop': navDesktop,
   'nav-ens': navEns,
   'nav-tx-status': navTxStatus,
-  'nav-migrate-rep': navMigrateRep,
-  'nav-migrate-gnt': navMigrateGnt,
-  'nav-migrate-ant': navMigrateAnt,
-  'nav-migrate-lend': navMigrateLend,
-  'nav-faucet': navFaucet
+  'nav-migrate': navMigrate,
+  'nav-faucet': navFaucet,
+  'nav-disclaimer': navDisclaimer,
+  'nav-nft': navNftDashboard
 };
 
 const pngIcons = {
@@ -266,7 +281,8 @@ const pngIcons = {
   'uni-logo': uniLogo,
   'lend-logo': lendLogo,
   'ant-logo': antLogo,
-  'gol-logo': golemLogo
+  'gol-logo': golemLogo,
+  'node-logo': nodeLogo
 };
 
 type SvgIcons = keyof typeof svgIcons;
@@ -337,7 +353,7 @@ const SDeleteIcon = styled(SInlineSVG)<StylingProps>`
 `;
 
 interface Props
-  extends Omit<React.ComponentProps<typeof SInlineSVG | typeof SImg | typeof SStrokeIcon>, 'src'> {
+  extends Omit<ComponentProps<typeof SInlineSVG | typeof SImg | typeof SStrokeIcon>, 'src'> {
   type: TIcon | 'sort' | 'delete';
 }
 
@@ -348,7 +364,7 @@ export const isPNGType = (type: TIcon): type is PngIcons =>
 export const getSVGIcon = (type: SvgIcons) => svgIcons[type];
 
 const Icon = ({ type, color, ...props }: Props) => {
-  if (type === 'website' || type === 'faucet-icon') {
+  if (type === 'website' || type === 'faucet-icon' || type === 'nav-nft') {
     return <SStrokeIcon src={svgIcons[type]} color={color} {...props} />;
   } else if (type === 'expandable') {
     return <SExpandableIcon src={svgIcons[type]} color={color} {...props} />;
@@ -360,8 +376,16 @@ const Icon = ({ type, color, ...props }: Props) => {
     return <SDeleteIcon src={svgIcons['nav-close']} color={color} {...props} />;
   } else if (type === 'address-book') {
     return <SInlineSVG src={svgIcons[type]} fill="none" {...props} />;
-  } else if (isSVGType(type)) {
+  } else if (type === 'tx-sent') {
+    return <SInlineSVG src={svgIcons[type]} fill="none" {...props} />;
+  } else if (type === 'tx-fee') {
+    return <SInlineSVG src={svgIcons[type]} fill="none" {...props} />;
+  } else if (type === 'link-out') {
+    return <SInlineSVG src={svgIcons[type]} fill="none" {...props} />;
+  } else if (isSVGType(type) && (color || props.fill)) {
     return <SInlineSVG src={svgIcons[type]} color={color} fill={color} {...props} />;
+  } else if (isSVGType(type)) {
+    return <SImg src={svgIcons[type]} {...props} />;
   } else if (isPNGType(type)) {
     return <SImg src={pngIcons[type]} {...props} />;
   } else {

@@ -1,11 +1,17 @@
-import { configureStore, DeepPartial } from '@reduxjs/toolkit';
+import { configureStore, PreloadedState } from '@reduxjs/toolkit';
 import { createLogger } from 'redux-logger';
 import { persistStore } from 'redux-persist';
 import createSagaMiddleware from 'redux-saga';
 
+import {
+  connectHDWallet,
+  getAccounts,
+  processAccountsQueue,
+  requestConnectionSuccess
+} from '@features/AddAccount/components/hdWallet.slice';
+import { messageUpdate, signMessage } from '@features/SignAndVerifyMessage';
 import { analyticsMiddleware } from '@services/Analytics';
-import { pollStart } from '@services/Polling';
-import { updateAccounts } from '@store';
+import { startBalancesPolling, startRatesPolling, updateAccounts } from '@store';
 import { IS_DEV } from '@utils';
 
 import { REDUX_PERSIST_ACTION_TYPES } from './persist.config';
@@ -13,7 +19,7 @@ import rootReducer, { AppState } from './root.reducer';
 import rootSaga from './sagas';
 import { serializeLegacyMiddleware } from './serialize.middleware';
 
-export default function createStore(initialState?: DeepPartial<AppState>) {
+export default function createStore(initialState?: PreloadedState<AppState>) {
   const sagaMiddleware = createSagaMiddleware();
 
   const store = configureStore({
@@ -22,6 +28,7 @@ export default function createStore(initialState?: DeepPartial<AppState>) {
     middleware: (getDefaultMiddleware) => [
       serializeLegacyMiddleware,
       ...getDefaultMiddleware({
+        immutableCheck: IS_DEV,
         thunk: false, // MYC uses sagas
         serializableCheck: {
           ignoredActions: [
@@ -32,7 +39,17 @@ export default function createStore(initialState?: DeepPartial<AppState>) {
             // @todo: Redux solve once we have selectors to deserialize.
             updateAccounts.type,
             // ignore pollStart to avoid errors with the methods passed in the payload of the action
-            pollStart.type
+            startRatesPolling.type,
+            startBalancesPolling.type,
+            // ignore these actions to avoid errors with hardware wallet sessions
+            connectHDWallet.type,
+            requestConnectionSuccess.type,
+            getAccounts.type,
+            processAccountsQueue.type,
+            // We pass an IFullWallet instance to signMessageSaga
+            signMessage.type,
+            // Skip check when typing in form
+            messageUpdate.type
           ]
         }
       }),

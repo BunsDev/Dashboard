@@ -1,11 +1,30 @@
 import { getUnlockTimestamps, TimestampMap } from '@mycrypto/unlock-scan';
 
-import { MEMBERSHIP_CONTRACTS, MembershipStatus } from '@features/PurchaseMembership/config';
-import { getMembershipContracts } from '@features/PurchaseMembership/helpers';
+import {
+  MEMBERSHIP_CONFIG,
+  MEMBERSHIP_CONTRACTS,
+  MembershipStatus
+} from '@features/PurchaseMembership/config';
 import { ProviderHandler } from '@services/EthService/';
+import { MembershipErrorState } from '@store/membership.slice';
 import { Bigish, Network, NetworkId, TAddress } from '@types';
 import { bigify } from '@utils';
 import { mapObjIndexed, pickBy, pipe, toString } from '@vendor';
+
+interface MembershipFetchConfig {
+  network: Network;
+  accounts: TAddress[];
+}
+
+export interface MembershipFetchResult {
+  memberships: MembershipStatus[];
+  errors: MembershipErrorState;
+}
+
+export const getMembershipContracts = (membershipNetworkId: NetworkId) =>
+  Object.values(MEMBERSHIP_CONFIG)
+    .filter(({ networkId }) => networkId === membershipNetworkId)
+    .map((membership) => membership.contractAddress);
 
 const isSafeInt = (bn: Bigish) => bn.isLessThanOrEqualTo(bigify(Number.MAX_SAFE_INTEGER));
 
@@ -39,6 +58,33 @@ const MembershipApi = {
     return getUnlockTimestamps(provider, addresses, {
       contracts: getMembershipContracts(network.id)
     }).then(formatResponse(network.id));
+  },
+  getMultiNetworkMemberships(configs: MembershipFetchConfig[]): Promise<MembershipFetchResult> {
+    return Promise.all(
+      configs.map((config) => {
+        return MembershipApi.getMemberships(config.accounts, config.network)
+          .then((memberships) => {
+            return { memberships, errors: {} } as MembershipFetchResult;
+          })
+          .catch((err) => {
+            console.log('[getMemberships]: Failed for network: ', config.network.id, ' err: ', err);
+            return {
+              memberships: [] as MembershipStatus[],
+              errors: { [config.network.id]: true }
+            } as MembershipFetchResult;
+          });
+      })
+    ).then((membershipStates) =>
+      membershipStates.reduce(
+        (membershipState, acc) => {
+          return {
+            memberships: [...acc.memberships, ...membershipState.memberships],
+            errors: { ...acc.errors, ...membershipState.errors }
+          };
+        },
+        ({ memberships: [], errors: {} } as unknown) as MembershipFetchResult
+      )
+    );
   }
 };
 

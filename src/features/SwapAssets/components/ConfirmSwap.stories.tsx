@@ -1,8 +1,9 @@
-import React from 'react';
+import { ComponentProps } from 'react';
+
+import { mockAppState, ProvidersWrapper } from 'test-utils';
 
 import { DAIUUID, ETHUUID } from '@config';
 import { fAccounts, fAssets, fTxParcels } from '@fixtures';
-import { StoreContext } from '@services/Store';
 import { ISwapAsset, TTicker, TUuid } from '@types';
 import { bigify, noOp } from '@utils';
 
@@ -11,10 +12,10 @@ import ConfirmSwapComponent from './ConfirmSwap';
 
 export default { title: 'Features/ConfirmSwap', component: ConfirmSwapComponent };
 
-const Template = (args: React.ComponentProps<typeof ConfirmSwapComponent>) => (
-  <StoreContext.Provider value={{ accounts: fAccounts, assets: () => fAssets } as any}>
+const Template = (args: ComponentProps<typeof ConfirmSwapComponent>) => (
+  <ProvidersWrapper initialState={mockAppState({ accounts: fAccounts, assets: fAssets })}>
     <ConfirmSwapComponent {...args} />
-  </StoreContext.Provider>
+  </ProvidersWrapper>
 );
 
 const DAI: ISwapAsset = {

@@ -1,15 +1,15 @@
-import React from 'react';
+import { ComponentProps } from 'react';
 
-import { simpleRender } from 'test-utils';
+import { mockAppState, simpleRender } from 'test-utils';
 
 import { fAccount, fAccounts, fAssets, fRopDAI } from '@fixtures';
-import { StoreContext } from '@services';
 import { noOp, truncate } from '@utils';
 
 import { LAST_CHANGED_AMOUNT } from '../types';
 import SwapAssets from './SwapAssets';
 
-const defaultProps: React.ComponentProps<typeof SwapAssets> = {
+const defaultProps: ComponentProps<typeof SwapAssets> = {
+  selectedNetwork: 'Ethereum',
   account: fAccounts[0],
   assets: fAssets,
   fromAsset: fAssets[0],
@@ -32,22 +32,16 @@ const defaultProps: React.ComponentProps<typeof SwapAssets> = {
   handleToAmountChanged: noOp,
   handleAccountSelected: noOp,
   handleGasLimitEstimation: noOp,
-  handleRefreshQuote: noOp
+  handleRefreshQuote: noOp,
+  handleFlipAssets: noOp,
+  handleSwapMax: noOp,
+  setNetwork: noOp
 };
 
-function getComponent(props: React.ComponentProps<typeof SwapAssets>) {
-  return simpleRender(
-    <StoreContext.Provider
-      value={
-        ({
-          accounts: fAccounts,
-          userAssets: fAccounts.flatMap((a) => a.assets)
-        } as any) as any
-      }
-    >
-      <SwapAssets {...props} />
-    </StoreContext.Provider>
-  );
+function getComponent(props: ComponentProps<typeof SwapAssets>) {
+  return simpleRender(<SwapAssets {...props} />, {
+    initialState: mockAppState({ accounts: fAccounts })
+  });
 }
 
 describe('SwapAssets', () => {

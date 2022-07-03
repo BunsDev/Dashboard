@@ -1,10 +1,7 @@
-import React from 'react';
-
 import { DeepPartial } from '@reduxjs/toolkit';
 import { fireEvent, mockStore, simpleRender, waitFor } from 'test-utils';
 
 import { fAccounts, fAssets, fRates, fSettings } from '@fixtures';
-import { StoreProvider } from '@services';
 import { AppState } from '@store';
 import { translateRaw } from '@translations';
 import { ExtendedAsset, ISettings, StoreAccount } from '@types';
@@ -22,29 +19,24 @@ function getComponent({
   assets?: ExtendedAsset[];
   initialState?: DeepPartial<AppState>;
 }) {
-  return simpleRender(
-    <StoreProvider>
-      <WalletBreakdown />
-    </StoreProvider>,
-    {
-      initialState: mockStore({
-        storeSlice: initialState,
-        dataStoreState: {
-          accounts,
-          assets,
-          settings,
-          rates: fRates,
-          trackedAssets: fAssets.reduce(
-            (acc, a) => ({
-              ...acc,
-              [a.uuid]: { coinGeckoId: 'ethereum' }
-            }),
-            {}
-          )
-        }
-      })
-    }
-  );
+  return simpleRender(<WalletBreakdown />, {
+    initialState: mockStore({
+      storeSlice: initialState,
+      dataStoreState: {
+        accounts,
+        assets,
+        settings,
+        rates: fRates,
+        trackedAssets: fAssets.reduce(
+          (acc, a) => ({
+            ...acc,
+            [a.uuid]: { ...a, coinGeckoId: 'ethereum' }
+          }),
+          {}
+        )
+      }
+    })
+  });
 }
 
 describe('WalletBreakdown', () => {

@@ -1,16 +1,15 @@
-import React from 'react';
+import { FC } from 'react';
 
 import { act, renderHook } from '@testing-library/react-hooks';
 import { actionWithPayload, mockAppState, mockUseDispatch, ProvidersWrapper } from 'test-utils';
 
 import { fAccount, fNotifications } from '@fixtures';
-import { ExtendedNotification } from '@types';
+import { ExtendedNotification, NotificationTemplates } from '@types';
 
-import { NotificationTemplates } from '.';
 import { useNotifications } from './useNotifications';
 
 const renderUseNotifications = ({ notifications = [] as ExtendedNotification[] } = {}) => {
-  const wrapper: React.FC = ({ children }) => (
+  const wrapper: FC = ({ children }) => (
     <ProvidersWrapper initialState={mockAppState({ notifications })}>{children}</ProvidersWrapper>
   );
   return renderHook(() => useNotifications(), { wrapper });
@@ -28,7 +27,7 @@ describe('useNotifications', () => {
     expect(result.current.currentNotification).toBe(notification);
   });
 
-  it('displayNotification() dispatches create action', () => {
+  it('displayNotification() dispatches display action', () => {
     const mockDispatch = mockUseDispatch();
     const { result } = renderUseNotifications({ notifications: [] });
     act(() =>
@@ -38,12 +37,8 @@ describe('useNotifications', () => {
     );
     expect(mockDispatch).toHaveBeenCalledWith(
       actionWithPayload({
-        template: NotificationTemplates.walletCreated,
-        templateData: { address: fAccount.address },
-        dismissed: false,
-        dateDismissed: undefined,
-        dateDisplayed: expect.any(Date),
-        uuid: expect.any(String)
+        templateName: NotificationTemplates.walletCreated,
+        templateData: { address: fAccount.address }
       })
     );
   });

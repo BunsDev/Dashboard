@@ -1,6 +1,18 @@
 import { BigNumber } from 'bignumber.js';
+import { DistributiveOmit } from 'react-redux';
 
-import { ISwapAsset, ITxGasLimit, ITxGasPrice, ITxObject, ITxStatus, StoreAccount } from '@types';
+import { UniversalGasEstimationResult } from '@services';
+import {
+  ISwapAsset,
+  ITxGasLimit,
+  ITxGasPrice,
+  ITxMetadata,
+  ITxObject,
+  ITxStatus,
+  ITxType,
+  NetworkId,
+  StoreAccount
+} from '@types';
 
 export enum LAST_CHANGED_AMOUNT {
   FROM = 'FROM_AMOUNT',
@@ -25,6 +37,7 @@ export interface SwapState {
 }
 
 export interface SwapFormState {
+  selectedNetwork: NetworkId;
   account: StoreAccount;
   assets: ISwapAsset[];
   fromAsset: ISwapAsset;
@@ -42,9 +55,15 @@ export interface SwapFormState {
   gasPrice?: ITxGasPrice;
   approvalGasLimit?: ITxGasLimit;
   tradeGasLimit?: ITxGasLimit;
-  approvalTx?: Partial<ITxObject>;
+  approvalTx?: DistributiveOmit<ITxObject, 'nonce' | 'gasLimit'> & {
+    txType: ITxType;
+  };
   expiration?: number;
-  tradeTx?: Partial<ITxObject>;
+  tradeTx?: DistributiveOmit<ITxObject, 'nonce' | 'gasLimit'> & {
+    txType: ITxType;
+    metadata: ITxMetadata;
+  };
+  gas?: { estimate: UniversalGasEstimationResult; baseFee?: BigNumber };
 }
 
 export interface IAssetPair {

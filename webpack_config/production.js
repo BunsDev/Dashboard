@@ -3,7 +3,6 @@ const MiniCSSExtractPlugin = require('mini-css-extract-plugin');
 const path = require('path');
 const webpack = require('webpack');
 const merge = require('webpack-merge');
-const SriPlugin = require('webpack-subresource-integrity');
 
 const { PRODUCTION, STAGING } = require('../environment');
 const common = require('./common');
@@ -14,7 +13,7 @@ const TargetEnv = process.env.TARGET_ENV || PRODUCTION;
 module.exports = merge.smart(common, {
   mode: 'production',
 
-  devtool: 'cheap-module-source-map',
+  devtool: 'source-map',
 
   output: {
     path: path.join(config.path.output, 'web'),
@@ -40,20 +39,10 @@ module.exports = merge.smart(common, {
   plugins: [
     // The EnvironmentPlugin is shorthand for using the DefinePlugin on process.env keys.
     // https://webpack.js.org/plugins/environment-plugin/
-    new webpack.EnvironmentPlugin([
-      'TARGET_ENV',
-      'SEGMENT_WRITE_KEY',
-      'ANALYTICS_API_URL',
-      'COMMIT_HASH'
-    ]),
+    new webpack.EnvironmentPlugin(['TARGET_ENV', 'COMMIT_HASH']),
 
     new MiniCSSExtractPlugin({
       filename: `[name].[contenthash].css`
-    }),
-
-    new SriPlugin({
-      hashFuncNames: ['sha256', 'sha384'],
-      enabled: true
     }),
 
     new PreloadWebpackPlugin({

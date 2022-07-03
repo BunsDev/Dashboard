@@ -105,7 +105,7 @@ const affiliateLinks: IExtUrl[] = [
     url: 'https://shop.trezor.io/?offer_id=10&aff_id=1735' as TURL
   },
   {
-    name: 'QUIKNODE_REFERRAL',
+    name: 'QUICKNODE_REFERRAL',
     url: 'https://quiknode.io?tap_a=67226-09396e&tap_s=860550-6c3251' as TURL
   },
   {
@@ -123,6 +123,14 @@ const affiliateLinks: IExtUrl[] = [
   {
     name: 'MYCRYPTO_WINTER_REFERRAL',
     url: 'https://winter.mycrypto.com/?utm_source=mycrypto&utm_medium=banner&utm_campaign=winter' as TURL
+  },
+  {
+    name: 'SWAP_REFERRAL',
+    url: 'https://app.mycrypto.com/swap?utm_medium=mycrypto&utm_source=dashboard&utm_campaign=swap' as TURL
+  },
+  {
+    name: 'GRIDPLUS_REFERRAL',
+    url: 'http://www.gridplus.io?afmc=MyCrypto' as TURL
   }
 ];
 
@@ -146,6 +154,9 @@ export const partnerLinks: Link[] = [
 ];
 
 export const UNISWAP_LINK = 'https://app.uniswap.org/';
+export const DAPPNODE_AIRDROP_LINK = 'https://app.dappnode.io/nodedrop';
+export const ENS_AIRDROP_LINK = 'https://claim.ens.domains/';
+export const GIV_AIRDROP_LINK = 'https://giv.giveth.io/claim';
 
 export const MYC_WINTER_LINK = 'https://winter.mycrypto.com';
 

@@ -1,21 +1,29 @@
-import React from 'react';
+import { ComponentProps } from 'react';
 
-import { mockAppState, simpleRender } from 'test-utils';
+import { APP_STATE, mockAppState, simpleRender } from 'test-utils';
 
 import { stepsContent } from '@features/SwapAssets/config';
-import { fAccount, fAccounts, fAssets, fRopDAI, fTxParcels } from '@fixtures';
-import { StoreContext } from '@services';
+import { fAccount, fAccounts, fAssets, fDAI, fTxParcels } from '@fixtures';
 import { translateRaw } from '@translations';
 import { bigify, noOp, truncate } from '@utils';
 
 import { SwapTransactionReceipt } from '.';
 import { LAST_CHANGED_AMOUNT } from '../types';
 
-const defaultProps: React.ComponentProps<typeof SwapTransactionReceipt> = {
-  account: fAccount,
+jest.mock('@vendor', () => {
+  return {
+    ...jest.requireActual('@vendor'),
+    FallbackProvider: jest.fn().mockImplementation(() => ({
+      waitForTransaction: jest.fn().mockResolvedValue({ status: 1 })
+    }))
+  };
+});
+
+const defaultProps: ComponentProps<typeof SwapTransactionReceipt> = {
+  account: fAccounts[0],
   assetPair: {
     fromAsset: fAssets[0],
-    toAsset: fRopDAI,
+    toAsset: fDAI,
     lastChangedAmount: LAST_CHANGED_AMOUNT.FROM,
     fromAmount: bigify(1),
     toAmount: bigify(100),
@@ -25,22 +33,15 @@ const defaultProps: React.ComponentProps<typeof SwapTransactionReceipt> = {
   onSuccess: noOp
 };
 
-function getComponent(props: React.ComponentProps<typeof SwapTransactionReceipt>) {
-  return simpleRender(
-    <StoreContext.Provider
-      value={
-        ({
-          assets: () => fAssets,
-          accounts: fAccounts
-        } as any) as any
-      }
-    >
-      <SwapTransactionReceipt {...props} />
-    </StoreContext.Provider>,
-    {
-      intialState: mockAppState({ assets: fAssets, accounts: fAccounts })
-    }
-  );
+function getComponent(props: ComponentProps<typeof SwapTransactionReceipt>) {
+  return simpleRender(<SwapTransactionReceipt {...props} />, {
+    initialState: mockAppState({
+      assets: fAssets,
+      accounts: fAccounts,
+      networks: APP_STATE.networks,
+      contracts: APP_STATE.contracts
+    })
+  });
 }
 
 describe('SwapTransactionReceipt', () => {

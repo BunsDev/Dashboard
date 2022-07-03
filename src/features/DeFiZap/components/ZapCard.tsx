@@ -1,11 +1,11 @@
-import React, { useContext } from 'react';
-
 import { formatEther } from '@ethersproject/units';
 import styled from 'styled-components';
 
 import { Button, LinkApp, Tooltip } from '@components';
 import { ROUTE_PATHS } from '@config';
-import { getTotalByAsset, StoreContext, useRates } from '@services';
+import { getTotalByAsset, useRates } from '@services';
+import { getAccountsAssets } from '@services/Store/helpers';
+import { getStoreAccounts, selectCurrentAccounts, useSelector } from '@store';
 import { BREAK_POINTS, COLORS, FONT_SIZE, SPACING } from '@theme';
 import { translateRaw } from '@translations';
 import { Asset, ReserveAsset, StoreAsset } from '@types';
@@ -231,9 +231,10 @@ const getDeFiAssetReserveAssets = (poolAsset: StoreAsset, assets: StoreAsset[]) 
 
 const ZapCard = ({ config }: Props) => {
   const { getPoolAssetReserveRate } = useRates();
-  const { currentAccounts, assets } = useContext(StoreContext);
+  const accounts = useSelector(getStoreAccounts);
+  const currentAccounts = useSelector(selectCurrentAccounts);
   const IndicatorItem = config.positionDetails;
-  const defiPoolBalances = assets(currentAccounts).filter(
+  const defiPoolBalances = getAccountsAssets(currentAccounts).filter(
     ({ uuid }) => uuid === config.poolTokenUUID
   );
   const userZapBalances = getTotalByAsset(defiPoolBalances)[config.poolTokenUUID];
@@ -244,7 +245,10 @@ const ZapCard = ({ config }: Props) => {
 
   const defiReserveBalances = !userZapBalances
     ? []
-    : getDeFiAssetReserveAssets(userZapBalances, assets())(getPoolAssetReserveRate);
+    : getDeFiAssetReserveAssets(
+        userZapBalances,
+        getAccountsAssets(accounts)
+      )(getPoolAssetReserveRate);
 
   const isZapOwned = !!humanReadableZapBalance;
 

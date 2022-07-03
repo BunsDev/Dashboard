@@ -1,24 +1,22 @@
 import {
+  AssetBalanceObject,
   ExtendedAsset,
   ExtendedNotification,
   IAccount,
   IProvidersMappings,
   IRates,
-  LocalStorage,
   Network,
   NodeOptions,
   StoreAccount,
+  StoreAsset,
   TTicker
 } from '@types';
 import { bigify, isBigish, isVoid } from '@utils';
 import {
-  difference,
-  dissoc,
   either,
   identity,
   ifElse,
   isNil,
-  keys,
   lensPath,
   lensProp,
   map,
@@ -67,9 +65,9 @@ const mergeNodes = (inbound: NodeOptions[], original: NodeOptions[]) =>
   original
     .map((o) => {
       const existing = inbound.find((i) => i.name === o.name);
-      return mergeRight(o, existing || {});
+      return mergeRight(o, existing ?? {});
     })
-    .concat(inbound.filter((i) => !original.find((o) => o.name === i.name)));
+    .concat(inbound.filter((i) => i.isCustom));
 
 export const mergeNetworks = (inbound: Network[], original: Network[]) =>
   original
@@ -80,7 +78,7 @@ export const mergeNetworks = (inbound: Network[], original: Network[]) =>
 
       return {
         ...o,
-        nodes: mergeNodes(o.nodes, existingNodes),
+        nodes: mergeNodes(existingNodes, o.nodes),
         selectedNode
       } as Network;
     })
@@ -90,33 +88,9 @@ export const mergeAssets = (inbound: ExtendedAsset[], original: ExtendedAsset[])
   original
     .map((o) => {
       const existing = inbound.find((i) => i.uuid === o.uuid);
-      return mergeRight(o, existing || {});
+      return mergeRight(o, existing ?? {});
     })
     .concat(inbound.filter((i) => !original.find((o) => o.uuid === i.uuid)));
-
-/**
- * Compare json to import with our persist state
- */
-export const canImport = (toImport: Partial<LocalStorage>, store: LocalStorage) => {
-  if (toImport.version !== store.version) {
-    return false;
-  } else {
-    // Check that all the keys in the store exist in the file to import
-    const diff = difference(keys(store), keys(toImport));
-    return diff.length === 0;
-  }
-};
-
-export const migrateConfig = (toImport: Partial<LocalStorage>) => {
-  return {
-    ...toImport,
-    // @ts-expect-error rates are present in settings on data to be migrated, want to move it at root of persistence layer
-    rates: toImport.settings?.rates ? toImport.settings.rates : toImport.rates,
-    trackedAssets: toImport.trackedAssets ? toImport.trackedAssets : {},
-    // @ts-expect-error rates are present in settings on data to be migrated, want to move it at root of persistence layer
-    settings: toImport.settings?.rates ? dissoc('rates', toImport.settings) : toImport.settings
-  } as LocalStorage;
-};
 
 export const destructureCoinGeckoIds = (
   rates: IRates,
@@ -142,3 +116,32 @@ export const buildCoinGeckoIdMapping = (assets: Record<string, IProvidersMapping
     }
     return acc;
   }, {} as Record<string, string>);
+
+// Ensure that we don't push unnecessary data to the store
+export const sanitizeAccount = (a: IAccount) => ({
+  uuid: a.uuid,
+  label: a.label,
+  address: a.address,
+  networkId: a.networkId,
+  assets: a.assets?.map((a: AssetBalanceObject | StoreAsset) => ({
+    uuid: a.uuid,
+    balance: a.balance
+  })),
+  wallet: a.wallet,
+  transactions: a.transactions,
+  path: a.path,
+  index: a.index,
+  mtime: a.mtime,
+  favorite: a.favorite,
+  isPrivate: a.isPrivate
+});
+
+export const generateCustomDPath = (dPath: string) => {
+  const dPathArray = dPath.split('/');
+  const index = parseInt(dPathArray.pop()!, 10);
+  const path = {
+    name: 'Custom DPath',
+    path: `${dPathArray.join('/')}/<account>`
+  };
+  return [path, index];
+};

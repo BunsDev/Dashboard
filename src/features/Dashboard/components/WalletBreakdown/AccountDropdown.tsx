@@ -1,9 +1,8 @@
-import React, { useEffect, useRef, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 
-import { Identicon } from '@mycrypto/ui';
 import styled from 'styled-components';
 
-import { Checkbox, Icon } from '@components';
+import { Checkbox, Icon, Identicon } from '@components';
 import { getLabelByAccount, useContacts } from '@services/Store';
 import { COLORS } from '@theme';
 import { translateRaw } from '@translations';
@@ -42,13 +41,13 @@ const SDropdown = styled('div')<SDropdownProps>`
 
   ${(props) =>
     props.isOpen &&
-    `{
+    `
     box-shadow: 0 7px 10px 5px rgba(50, 50, 93, 0.1), 0 3px 6px 0 rgba(0, 0, 0, 0.07);
     border-bottom-left-radius: 0;
     border-bottom-right-radius: 0;
     border: 2px solid ${BLUE_LIGHT};
     padding: 8px 14px;
-  }`}
+  `}
 
   & > div {
     border-top-left-radius: 0;
@@ -93,6 +92,11 @@ const SCheckbox = styled(Checkbox)`
   img {
     min-width: 30px;
   }
+`;
+
+const ItemContainer = styled.div`
+  overflow-y: scroll;
+  max-height: 450px;
 `;
 
 const renderAccounts = (
@@ -170,7 +174,7 @@ const AccountDropdown = ({
       </LabelRow>
 
       {isOpen && (
-        <div onClick={(e) => e.stopPropagation()}>
+        <ItemContainer onClick={(e) => e.stopPropagation()}>
           <SCheckbox
             name="all-accounts"
             checked={allVisible}
@@ -179,7 +183,7 @@ const AccountDropdown = ({
           />
           <Divider />
           {renderAccounts(accounts, draftSelected, contacts, toggleSingleAccount)}
-        </div>
+        </ItemContainer>
       )}
     </SDropdown>
   );

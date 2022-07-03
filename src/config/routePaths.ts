@@ -29,16 +29,6 @@ const PATHS: IRoutePath[] = [
     path: '/create-wallet'
   },
   {
-    name: 'CREATE_WALLET_MNEMONIC',
-    title: translateRaw('CREATE_WALLET_MNEMONIC'),
-    path: '/create-wallet/mnemonic'
-  },
-  {
-    name: 'CREATE_WALLET_KEYSTORE',
-    title: translateRaw('CREATE_WALLET_KEYSTORE'),
-    path: '/create-wallet/keystore'
-  },
-  {
     name: 'DOWNLOAD_DESKTOP_APP',
     title: translateRaw('DOWNLOAD_DESKTOP_APP'),
     path: '/download-desktop-app'
@@ -52,16 +42,6 @@ const PATHS: IRoutePath[] = [
     name: 'REQUEST_ASSETS',
     title: translateRaw('REQUEST'),
     path: '/request'
-  },
-  {
-    name: 'SCREEN_LOCK_LOCKED',
-    title: translateRaw('SCREEN_LOCK_LOCKED'),
-    path: '/screen-lock/locked'
-  },
-  {
-    name: 'SCREEN_LOCK_FORGOT',
-    title: translateRaw('SCREEN_LOCK_FORGOT'),
-    path: '/screen-lock/forgot-password'
   },
   {
     name: 'SEND',
@@ -139,29 +119,19 @@ const PATHS: IRoutePath[] = [
     path: '/tx-status'
   },
   {
-    name: 'REP_TOKEN_MIGRATION',
-    title: 'REP Token Migration',
-    path: '/migrate/rep'
-  },
-  {
-    name: 'AAVE_TOKEN_MIGRATION',
-    title: 'AAVE Token Migration',
-    path: '/migrate/aave'
-  },
-  {
-    name: 'ANT_TOKEN_MIGRATION',
-    title: 'ANT Token Migration',
-    path: '/migrate/ant'
-  },
-  {
-    name: 'GOLEM_TOKEN_MIGRATION',
-    title: 'GOLEM Token Migration',
-    path: '/migrate/golem'
+    name: 'TOKEN_MIGRATION',
+    title: 'Token Migration',
+    path: '/migrate'
   },
   {
     name: 'FAUCET',
     title: translateRaw('FAUCET'),
     path: '/faucet'
+  },
+  {
+    name: 'NFT_DASHBOARD',
+    title: 'NFT Dashboard',
+    path: '/nft-dashboard'
   }
 ];
 

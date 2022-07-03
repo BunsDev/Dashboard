@@ -2,7 +2,7 @@ import { XDAIUUID } from '@config';
 import { Network, NodeType, TTicker, TUuid } from '@types';
 import { makeExplorer } from '@utils';
 
-const Ethereum: Network = {
+export const Ethereum: Network = {
   id: 'Ethereum',
   name: 'Ethereum',
   chainId: 1,
@@ -16,16 +16,16 @@ const Ethereum: Network = {
   },
   dPaths: {
     TREZOR: {
-      label: 'Trezor (ETH)',
-      value: "m/44'/60'/0'/0"
+      name: 'Trezor (ETH)',
+      path: "m/44'/60'/0'/0/<account>"
     },
     LEDGER_NANO_S: {
-      label: 'Ledger (ETH)',
-      value: "m/44'/60'/0'"
+      name: 'Ledger (ETH)',
+      path: "m/44'/60'/0'/<account>"
     },
     default: {
-      label: 'Default (ETH)',
-      value: "m/44'/60'/0'/0"
+      name: 'Default (ETH)',
+      path: "m/44'/60'/0'/0/<account>"
     }
   },
   baseAsset: '356a192b-7913-504c-9457-4d18c28d46e6' as TUuid,
@@ -50,7 +50,7 @@ const Ethereum: Network = {
   })
 };
 
-const Ropsten: Network = {
+export const Ropsten: Network = {
   id: 'Ropsten',
   name: 'Ropsten',
   chainId: 3,
@@ -64,16 +64,16 @@ const Ropsten: Network = {
   },
   dPaths: {
     TREZOR: {
-      label: 'Testnet (ETH)',
-      value: "m/44'/1'/0'/0"
+      name: 'Testnet (ETH)',
+      path: "m/44'/1'/0'/0/<account>"
     },
     LEDGER_NANO_S: {
-      label: 'Ledger (ETH)',
-      value: "m/44'/60'/0'"
+      name: 'Ledger (ETH)',
+      path: "m/44'/60'/0'/<account>"
     },
     default: {
-      label: 'Testnet (ETH)',
-      value: "m/44'/1'/0'/0"
+      name: 'Testnet (ETH)',
+      path: "m/44'/1'/0'/0/<account>"
     }
   },
   baseAsset: '77de68da-ecd8-53ba-bbb5-8edb1c8e14d7' as TUuid,
@@ -92,7 +92,7 @@ const Ropsten: Network = {
   })
 };
 
-const xDAI: Network = {
+export const xDAI: Network = {
   id: 'xDAI',
   name: 'xDAI',
   chainId: 100,
@@ -106,16 +106,16 @@ const xDAI: Network = {
   }),
   dPaths: {
     TREZOR: {
-      label: 'Trezor (ETH)',
-      value: "m/44'/60'/0'/0"
+      name: 'Trezor (XDAI)',
+      path: "m/44'/700'/0'/0/<account>"
     },
     LEDGER_NANO_S: {
-      label: 'Ledger (ETH)',
-      value: "m/44'/60'/0'"
+      name: 'Ledger (ETH)',
+      path: "m/44'/60'/0'/<account>"
     },
     default: {
-      label: 'Default (ETH)',
-      value: "m/44'/60'/0'/0"
+      name: 'Default (XDAI)',
+      path: "m/44'/700'/0'/0/<account>"
     }
   },
   gasPriceSettings: {

@@ -1,3 +1,5 @@
+import { DerivationPath, Wallet } from '@mycrypto/wallets';
+
 import { IUseWalletConnect } from '@services';
 import { Network, TAddress } from '@types';
 
@@ -5,8 +7,8 @@ export interface WalletService {
   init(initArgs: WalletServiceInitArgs): any;
 }
 
-export interface HardwareWalletService extends WalletService {
-  getChainCode(dPath: string): Promise<any>;
+export interface HardwareWalletService {
+  init(initArgs: HardwareWalletInitArgs): Promise<Wallet>;
 }
 
 type WalletServiceInitArgs =
@@ -21,8 +23,9 @@ export interface Web3WalletInitArgs {
 
 export interface HardwareWalletInitArgs {
   address: TAddress;
-  dPath: string;
+  dPath: DerivationPath;
   index: number;
+  params?: unknown;
 }
 
 export interface ViewOnlyWalletInitArgs {
@@ -32,4 +35,5 @@ export interface ViewOnlyWalletInitArgs {
 export interface WalletConnectWalletInitArgs {
   address: TAddress;
   signMessageHandler: IUseWalletConnect['signMessage'];
+  killHandler: IUseWalletConnect['kill'];
 }

@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import { useEffect, useState } from 'react';
 
 import { useHistory } from 'react-router-dom';
 
@@ -47,7 +47,7 @@ export function GeneralStepper({
   };
 
   const goBack = () =>
-    step === 0 ? history.push(defaultBackPath || ROUTE_PATHS.DASHBOARD.path) : goToPrevStep();
+    step === 0 ? history.push(defaultBackPath ?? ROUTE_PATHS.DASHBOARD.path) : goToPrevStep();
 
   const getStep = (stepIndex: number) => {
     const path = steps;
@@ -56,14 +56,20 @@ export function GeneralStepper({
     return { currentPath: path, label, Step: component, stepAction: actions, props };
   };
 
-  const { currentPath, label, Step, stepAction } = getStep(step);
+  const { currentPath, label: stepLabel, Step, stepAction } = getStep(step);
+
+  const [label, setLabel] = useState(stepLabel);
+
+  useEffect(() => {
+    setLabel(stepLabel);
+  }, [stepLabel]);
 
   // Creates the label for the btn that sends user to the previous step.
   // If there is no previous step, you'll be going to either the default location (dashboard), or a user-specified location.
   // If there is a previous step, you'll go to that step and it's title is used as the back btn label.
   const getBackBtnLabel = () =>
     Math.max(-1, step - 1) === -1
-      ? defaultBackPathLabel || translateRaw('DASHBOARD')
+      ? defaultBackPathLabel ?? translateRaw('DASHBOARD')
       : getStep(Math.max(0, step - 1)).label;
 
   const goToNextStep = () => setStep(Math.min(step + 1, currentPath.length - 1));
@@ -72,6 +78,9 @@ export function GeneralStepper({
   const stepProps = stepObject.props;
   const stepActions = stepObject.actions;
 
+  const stepperProps = { goToNextStep, goBack, goToFirstStep, goToPrevStep, setLabel };
+
+  // @todo Remove
   if (onRender) {
     onRender(goToNextStep);
   }
@@ -87,13 +96,15 @@ export function GeneralStepper({
     >
       <QueryBanner />
       <Step
+        heading={label}
         onComplete={(payload: any) =>
           stepAction ? stepAction(payload, goToNextStep, goToPrevStep) : goToNextStep()
         }
-        completeButton={completeBtnText || translateRaw('SEND_ASSETS_SEND_ANOTHER')}
+        completeButton={completeBtnText ?? translateRaw('SEND_ASSETS_SEND_ANOTHER')}
         resetFlow={() => (stepAction ? stepAction(goToFirstStep) : goToFirstStep())}
         {...stepProps}
         {...stepActions}
+        {...stepperProps}
       />
     </ContentPanel>
   );

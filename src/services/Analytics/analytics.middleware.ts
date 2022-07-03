@@ -1,6 +1,12 @@
 import { Action, Dispatch, Middleware } from '@reduxjs/toolkit';
 
-import { addAccounts, createAsset, decrypt } from '@store';
+import {
+  addNewAccounts,
+  createAsset,
+  importState,
+  setDemoMode,
+  setProductAnalyticsAuthorisation
+} from '@store';
 
 import { trackEvent } from './saga';
 
@@ -11,32 +17,66 @@ export const analyticsMiddleware: Middleware<TObject, any, Dispatch<Action>> = (
   next
 ) => (action) => {
   switch (action.type) {
-    case addAccounts.type: {
-      state.dispatch(
-        trackEvent({
-          name: 'Add Account',
-          params: { qty: action.payload.length, walletId: action.payload[0].wallet } // multiple add accounts are always of the same type.
-        })
-      );
-      break;
-    }
-    // Track ScreenLock activity
-    case decrypt.type: {
-      state.dispatch(
-        trackEvent({
-          name: 'Screen unlocked'
-        })
-      );
+    case addNewAccounts.type: {
+      // multiple add accounts are always of the same type and network
+      action.payload.newAccounts.forEach(() => {
+        state.dispatch(
+          trackEvent({
+            action: 'Add Account',
+            customDimensions: [
+              {
+                id: 1,
+                value: action.payload.accountType
+              },
+              {
+                id: 2,
+                value: action.payload.networkId
+              }
+            ]
+          })
+        );
+      });
       break;
     }
     // Track custom token creation. Is also triggered on custom network.
     case createAsset.type: {
       state.dispatch(
         trackEvent({
-          name: 'Add Asset',
-          params: action.payload
+          action: 'Add Asset',
+          name: action.payload.ticker,
+          customDimensions: action.payload.contractAddress
+            ? [
+                {
+                  id: 3,
+                  value: action.payload.contractAddress
+                }
+              ]
+            : []
         })
       );
+      break;
+    }
+
+    case setDemoMode.type: {
+      state.dispatch(
+        trackEvent({
+          action: 'Set Demo Mode'
+        })
+      );
+      break;
+    }
+
+    case setProductAnalyticsAuthorisation.type: {
+      state.dispatch(
+        trackEvent({
+          action: 'Deactivate analytics'
+        })
+      );
+      break;
+    }
+
+    case importState.type: {
+      state.dispatch(trackEvent({ action: 'Import AppState' }));
       break;
     }
 

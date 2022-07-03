@@ -1,4 +1,4 @@
-import React from 'react';
+import { ComponentProps } from 'react';
 
 import { DEFAULT_NETWORK } from '@config';
 import { customNodeConfig } from '@fixtures';
@@ -10,7 +10,7 @@ const networkId = DEFAULT_NETWORK;
 
 export default { title: 'Features/AddorEditNetworkNode', component: AddOrEditNetworkNode };
 
-const Template = (args: React.ComponentProps<typeof AddOrEditNetworkNode>) => (
+const Template = (args: ComponentProps<typeof AddOrEditNetworkNode>) => (
   <div className="sb-container" style={{ maxWidth: '800px' }}>
     <AddOrEditNetworkNode {...args} />
   </div>
@@ -23,13 +23,13 @@ const defaultProps = {
   isAddingCustomNetwork: false
 };
 
-const AddNetworkNode = Template.bind({});
+export const AddNetworkNode = Template.bind({});
 AddNetworkNode.storyName = 'AddNetworkNode';
 AddNetworkNode.args = {
   ...defaultProps
 };
 
-const EditNetworkNode = Template.bind({});
+export const EditNetworkNode = Template.bind({});
 EditNetworkNode.storyName = 'EditNetworkNode';
 EditNetworkNode.args = {
   ...defaultProps,

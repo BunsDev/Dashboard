@@ -1,6 +1,5 @@
-import React, { useState } from 'react';
+import { useState } from 'react';
 
-import { Identicon } from '@mycrypto/ui';
 import cloneDeep from 'lodash/cloneDeep';
 import isNumber from 'lodash/isNumber';
 import styled from 'styled-components';
@@ -12,6 +11,7 @@ import {
   EthAddress,
   FixedSizeCollapsibleTable,
   Icon,
+  Identicon,
   LinkApp,
   Network,
   RowDeleteOverlay,
@@ -251,7 +251,7 @@ export default function AddressBook({
             />
           </Label>,
           <EthAddress address={address} truncate={true} isCopyable={true} />,
-          <Network color={color}>{network}</Network>,
+          <Network color={color}>{networkData.name || network}</Network>,
           <EditableText
             maxWidth="260px"
             placeholder="(empty)"

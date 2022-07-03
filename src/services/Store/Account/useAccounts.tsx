@@ -1,9 +1,9 @@
 import { useSelector } from 'react-redux';
 
 import {
-  addAccounts,
+  addTxToAccount as addTxToAccountRedux,
   destroyAccount,
-  getAccounts,
+  getStoreAccounts,
   updateAccount as updateAccountRedux,
   updateAccounts as updateAccountsRedux,
   useDispatch
@@ -15,7 +15,6 @@ import { getAccountByAddressAndNetworkName as getAccountByAddressAndNetworkNameF
 
 export interface IAccountContext {
   accounts: IAccount[];
-  createMultipleAccountsWithIDs(accountData: IAccount[]): void;
   deleteAccount(account: IAccount): void;
   updateAccount(uuid: TUuid, accountData: IAccount): void;
   addTxToAccount(account: IAccount, transaction: ITxReceipt): void;
@@ -27,25 +26,16 @@ export interface IAccountContext {
 }
 
 function useAccounts() {
-  const accounts = useSelector(getAccounts);
+  const accounts = useSelector(getStoreAccounts);
 
   const dispatch = useDispatch();
-
-  const createMultipleAccountsWithIDs = (newAccounts: IAccount[]) => {
-    dispatch(addAccounts(newAccounts));
-  };
 
   const deleteAccount = (account: IAccount) => dispatch(destroyAccount(account.uuid));
 
   const updateAccount = (_: TUuid, account: IAccount) => dispatch(updateAccountRedux(account));
 
-  const addTxToAccount = (accountData: IAccount, newTx: ITxReceipt) => {
-    const newAccountData = {
-      ...accountData,
-      transactions: [...accountData.transactions.filter((tx) => tx.hash !== newTx.hash), newTx]
-    };
-    updateAccount(accountData.uuid, newAccountData);
-  };
+  const addTxToAccount = (account: IAccount, tx: ITxReceipt) =>
+    dispatch(addTxToAccountRedux({ account, tx }));
 
   const removeTxFromAccount = (accountData: IAccount, tx: ITxReceipt) => {
     const newAccountData = {
@@ -73,7 +63,6 @@ function useAccounts() {
 
   return {
     accounts,
-    createMultipleAccountsWithIDs,
     deleteAccount,
     updateAccount,
     addTxToAccount,

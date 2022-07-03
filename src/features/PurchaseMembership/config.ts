@@ -5,8 +5,16 @@ import onemonthIcon from '@assets/images/membership/membership-onemonth.svg';
 import sixMonthsIcon from '@assets/images/membership/membership-sixmonths.svg';
 import threemonthsIcon from '@assets/images/membership/membership-threemonths.svg';
 import twelveMonthsIcon from '@assets/images/membership/membership-twelvemonths.svg';
-import { DAIUUID, DEFAULT_NETWORK, ETHUUID, XDAI_NETWORK, XDAIUUID } from '@config';
-import translate, { translateRaw } from '@translations';
+import {
+  DAIUUID,
+  DEFAULT_NETWORK,
+  ETHUUID,
+  POLYGON_NETWORK,
+  USDCPolygonUUID,
+  XDAI_NETWORK,
+  XDAIUUID
+} from '@config';
+import { translateRaw } from '@translations';
 import { NetworkId, TAddress } from '@types';
 
 export interface IMembershipConfig {
@@ -17,7 +25,6 @@ export interface IMembershipConfig {
   icon: string;
   price: string;
   networkId: NetworkId;
-  discount?: string;
   assetUUID: string;
   durationInDays: number;
   discountNotice: string;
@@ -54,10 +61,11 @@ export enum IMembershipId {
   lifetime = 'lifetime',
   xdaionemonth = 'xdaionemonth',
   xdaitwelvemonths = 'xdaitwelvemonths',
-  xdailifetime = 'xdailifetime'
+  xdailifetime = 'xdailifetime',
+  polygononemonth = 'polygononemonth',
+  polygontwelvemonths = 'polygontwelvemonths',
+  polygonlifetime = 'polygonlifetime'
 }
-
-export const MEMBERSHIP_PURCHASE_GAS_LIMIT = 1000000;
 
 // Also update eth contracts when updating membership contract addresses
 export const MEMBERSHIP_CONFIG: IMembershipConfigObject = {
@@ -67,7 +75,7 @@ export const MEMBERSHIP_CONFIG: IMembershipConfigObject = {
     contractAddress: '0x6cA105D2AF7095B1BCEeb6A2113D168ddDCD57cf',
     description: '',
     icon: onemonthIcon,
-    price: '4',
+    price: '10',
     assetUUID: DAIUUID,
     durationInDays: 30,
     discountNotice: '',
@@ -80,11 +88,24 @@ export const MEMBERSHIP_CONFIG: IMembershipConfigObject = {
     contractAddress: '0xcB3BB4CCe15b492E7fdD7cb9a3835C034714207A',
     description: '',
     icon: onemonthIcon,
-    price: '4',
+    price: '10',
     assetUUID: XDAIUUID,
     durationInDays: 30,
     discountNotice: '',
     networkId: XDAI_NETWORK
+  },
+
+  polygononemonth: {
+    title: translateRaw('MEMBERSHIP_MONTH', { $duration: '1' }),
+    key: IMembershipId.polygononemonth,
+    contractAddress: '0x54d0be5C24e183EF4247c5C1a426A6838696ED88',
+    description: '',
+    icon: onemonthIcon,
+    price: '10',
+    assetUUID: USDCPolygonUUID,
+    durationInDays: 30,
+    discountNotice: '',
+    networkId: POLYGON_NETWORK
   },
 
   threemonths: {
@@ -94,7 +115,6 @@ export const MEMBERSHIP_CONFIG: IMembershipConfigObject = {
     description: '',
     icon: threemonthsIcon,
     price: '10.5',
-    discount: '10',
     disabled: true,
     assetUUID: DAIUUID,
     durationInDays: 90,
@@ -109,7 +129,6 @@ export const MEMBERSHIP_CONFIG: IMembershipConfigObject = {
     description: '',
     icon: sixMonthsIcon,
     price: '18',
-    discount: '20',
     disabled: true,
     assetUUID: DAIUUID,
     durationInDays: 180,
@@ -123,11 +142,10 @@ export const MEMBERSHIP_CONFIG: IMembershipConfigObject = {
     contractAddress: '0xee2B7864d8bc731389562F820148e372F57571D8',
     description: '',
     icon: twelveMonthsIcon,
-    price: '30',
-    discount: '40',
+    price: '100',
     assetUUID: DAIUUID,
     durationInDays: 366,
-    discountNotice: translateRaw('MEMBERSHIP_DISCOUNT', { $percentage: '~37.5%' }),
+    discountNotice: translateRaw('MEMBERSHIP_DISCOUNT', { $percentage: '~16.6%' }),
     networkId: DEFAULT_NETWORK
   },
 
@@ -137,12 +155,24 @@ export const MEMBERSHIP_CONFIG: IMembershipConfigObject = {
     contractAddress: '0xf97f516Cc0700a4Ce9Ee64D488F744f631e1525d',
     description: '',
     icon: twelveMonthsIcon,
-    price: '30',
-    discount: '40',
+    price: '100',
     assetUUID: XDAIUUID,
     durationInDays: 366,
-    discountNotice: translateRaw('MEMBERSHIP_DISCOUNT', { $percentage: '~37.5%' }),
+    discountNotice: translateRaw('MEMBERSHIP_DISCOUNT', { $percentage: '~16.6%' }),
     networkId: XDAI_NETWORK
+  },
+
+  polygontwelvemonths: {
+    title: translateRaw('MEMBERSHIP_MONTHS', { $duration: '12' }),
+    key: IMembershipId.polygontwelvemonths,
+    contractAddress: '0x46522c5a1018E13E40e3117191200e4CF6039241',
+    description: '',
+    icon: twelveMonthsIcon,
+    price: '100',
+    assetUUID: USDCPolygonUUID,
+    durationInDays: 366,
+    discountNotice: translateRaw('MEMBERSHIP_DISCOUNT', { $percentage: '~16.6%' }),
+    networkId: POLYGON_NETWORK
   },
 
   lifetime: {
@@ -151,7 +181,7 @@ export const MEMBERSHIP_CONFIG: IMembershipConfigObject = {
     contractAddress: '0x098D8b363933D742476DDd594c4A5a5F1a62326a',
     description: '',
     icon: lifetimeIcon,
-    price: '2',
+    price: '1',
     assetUUID: ETHUUID,
     durationInDays: 36500,
     discountNotice: translateRaw('MEMBERSHIP_LIFETIME_DESC'),
@@ -169,6 +199,19 @@ export const MEMBERSHIP_CONFIG: IMembershipConfigObject = {
     durationInDays: 36500,
     discountNotice: translateRaw('MEMBERSHIP_LIFETIME_DESC'),
     networkId: XDAI_NETWORK
+  },
+
+  polygonlifetime: {
+    title: translateRaw('MEMBERSHIP_LIFETIME_EMOJI'),
+    key: IMembershipId.polygonlifetime,
+    contractAddress: '0xf6df8A1cD9Da0d4b0c63Ae55BEc7A8566384C11C',
+    description: '',
+    icon: lifetimeIcon,
+    price: '999',
+    assetUUID: USDCPolygonUUID,
+    durationInDays: 36500,
+    discountNotice: translateRaw('MEMBERSHIP_LIFETIME_DESC'),
+    networkId: POLYGON_NETWORK
   }
 };
 
@@ -195,28 +238,5 @@ export const stepsContent = [
     icon: step2SVG,
     content: translateRaw('MEMBERSHIP_STEP2_TEXT'),
     buttonText: `${translateRaw('CONFIRM_TRANSACTION')}`
-  }
-];
-
-export const accordionContent = [
-  {
-    title: translateRaw('MEMBERSHIP_ACCORDION_FIRST_TITLE'),
-    component: translate('MEMBERSHIP_ACCORDION_FIRST_CONTENT')
-  },
-  {
-    title: translateRaw('MEMBERSHIP_ACCORDION_SECOND_TITLE'),
-    component: translate('MEMBERSHIP_ACCORDION_SECOND_CONTENT')
-  },
-  {
-    title: translateRaw('MEMBERSHIP_ACCORDION_THIRD_TITLE'),
-    component: translate('MEMBERSHIP_ACCORDION_THIRD_CONTENT')
-  },
-  {
-    title: translateRaw('MEMBERSHIP_ACCORDION_FIFTH_TITLE'),
-    component: translate('MEMBERSHIP_ACCORDION_FIFTH_CONTENT')
-  },
-  {
-    title: translateRaw('MEMBERSHIP_ACCORDION_FOURTH_TITLE'),
-    component: translate('MEMBERSHIP_ACCORDION_FOURTH_CONTENT')
   }
 ];

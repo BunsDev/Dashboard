@@ -1,9 +1,6 @@
-import React from 'react';
+import { FC } from 'react';
 
-import {
-  ResolutionError,
-  ResolutionErrorCode
-} from '@unstoppabledomains/resolution/build/resolutionError';
+import { ResolutionError, ResolutionErrorCode } from '@unstoppabledomains/resolution';
 import styled from 'styled-components';
 
 import translate, { translateRaw } from '@translations';
@@ -37,7 +34,7 @@ const humanizeEnsError = (error: ResolutionError, props: DomainStatusProps) => {
   return error.message;
 };
 
-export const DomainStatus: React.FC<DomainStatusProps> = (props: DomainStatusProps) => {
+export const DomainStatus: FC<DomainStatusProps> = (props: DomainStatusProps) => {
   const parseError = (resolutionError?: ResolutionError) => {
     if (!resolutionError)
       return withInlineError(

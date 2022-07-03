@@ -1,4 +1,4 @@
-import React from 'react';
+import { FC } from 'react';
 
 import { renderHook } from '@testing-library/react-hooks';
 import {
@@ -9,7 +9,7 @@ import {
   waitFor
 } from 'test-utils';
 
-import { fAccounts, fTxReceipt } from '@fixtures';
+import { fAccounts, fNetworks, fTxReceipt } from '@fixtures';
 import { IAccount } from '@types';
 
 import useAccounts from './useAccounts';
@@ -31,8 +31,10 @@ jest.mock('@mycrypto/eth-scan', () => {
 });
 
 const renderUseAccounts = ({ accounts = [] as IAccount[] } = {}) => {
-  const wrapper: React.FC = ({ children }) => (
-    <ProvidersWrapper initialState={mockAppState({ accounts })}>{children}</ProvidersWrapper>
+  const wrapper: FC = ({ children }) => (
+    <ProvidersWrapper initialState={mockAppState({ accounts, networks: fNetworks })}>
+      {children}
+    </ProvidersWrapper>
   );
   return renderHook(() => useAccounts(), { wrapper });
 };
@@ -41,13 +43,6 @@ describe('useAccounts', () => {
   it('uses get addressbook from store', () => {
     const { result } = renderUseAccounts({ accounts: fAccounts });
     expect(result.current.accounts).toEqual(fAccounts);
-  });
-
-  it('createMultipleAccountsWithIDs() calls updateAll with multiple accounts', () => {
-    const mockDispatch = mockUseDispatch();
-    const { result } = renderUseAccounts({ accounts: [] });
-    result.current.createMultipleAccountsWithIDs(fAccounts);
-    expect(mockDispatch).toHaveBeenCalledWith(actionWithPayload(fAccounts));
   });
 
   it('deleteAccount() calls destroy', () => {
@@ -70,8 +65,8 @@ describe('useAccounts', () => {
     result.current.addTxToAccount(fAccounts[0], fTxReceipt);
     expect(mockDispatch).toHaveBeenCalledWith(
       actionWithPayload({
-        ...fAccounts[0],
-        transactions: [fTxReceipt]
+        account: fAccounts[0],
+        tx: fTxReceipt
       })
     );
   });

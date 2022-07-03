@@ -1,1 +1,1 @@
-export { Web3Node, isWeb3Node, setupWeb3Node } from './node';
+export { setupWeb3Node, getApprovedAccounts, requestAccounts, getChainIdAndLib } from './node';

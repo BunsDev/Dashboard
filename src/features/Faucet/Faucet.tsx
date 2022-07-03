@@ -1,4 +1,4 @@
-import React, { useContext, useState } from 'react';
+import { useEffect, useState } from 'react';
 
 import { Heading, Input, Tooltip } from '@mycrypto/ui';
 import { Field, FieldProps, Form, Formik, FormikProps } from 'formik';
@@ -23,7 +23,8 @@ import {
   MYCRYPTO_FAUCET_LINK,
   ROUTE_PATHS
 } from '@config';
-import { StoreContext, useAssets, useContacts, useNetworks } from '@services/Store';
+import { getStoreAccount, useAccounts, useAssets, useContacts, useNetworks } from '@services/Store';
+import { getStoreAccounts, useSelector } from '@store';
 import { COLORS, SPACING } from '@theme';
 import translate, { Trans, translateRaw } from '@translations';
 import { IAccount as IIAccount, InlineMessageType, Network, StoreAccount } from '@types';
@@ -93,7 +94,9 @@ export default function Faucet() {
     initialFaucetState
   );
 
-  const { accounts } = useContext(StoreContext);
+  const accounts = useSelector(getStoreAccounts);
+
+  const { addTxToAccount } = useAccounts();
 
   const initialValues = {
     recipientAddress: {} as StoreAccount
@@ -106,6 +109,24 @@ export default function Faucet() {
   const { getContactByAddressAndNetworkId } = useContacts();
 
   const [network, setNetwork] = useState<Network | undefined>(undefined);
+
+  const txConfig =
+    faucetState.txResult &&
+    makeTxConfig(faucetState.txResult, networks, assets, accounts, getContactByAddressAndNetworkId);
+
+  const txReceipt = txConfig && makeTxReceipt(faucetState.txResult, txConfig);
+
+  useEffect(() => {
+    if (txReceipt) {
+      const recipientAccount = getStoreAccount(accounts)(
+        txReceipt.to,
+        txReceipt.baseAsset.networkId
+      );
+      if (recipientAccount) {
+        addTxToAccount(recipientAccount, txReceipt);
+      }
+    }
+  }, [faucetState.txResult]);
 
   const steps = [
     <Formik
@@ -210,17 +231,13 @@ export default function Faucet() {
     <>
       {faucetState.txResult && (
         <TxReceipt
-          txConfig={makeTxConfig(
-            faucetState.txResult,
-            networks,
-            assets,
-            getContactByAddressAndNetworkId
-          )}
-          txReceipt={makeTxReceipt(faucetState.txResult, networks, assets)}
+          txConfig={txConfig}
+          txReceipt={txReceipt}
           onComplete={() => reset()}
           resetFlow={() => reset()}
           queryStringsDisabled={true}
           customBroadcastText={translateRaw('FAUCET_SUCCESS')}
+          disablePendingState={true}
           customComponent={() => (
             <FaucetReceiptBanner network={network!} received={faucetState.txResult.value} />
           )}

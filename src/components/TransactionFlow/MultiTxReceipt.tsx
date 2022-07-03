@@ -1,11 +1,10 @@
-import React from 'react';
-
 import { Button } from '@mycrypto/ui';
+import styled from 'styled-components';
 
 import { Body, LinkApp, SubHeading, TimeElapsed, Tooltip } from '@components';
 import { ROUTE_PATHS } from '@config';
 import { useRates, useSettings } from '@services';
-import { COLORS } from '@theme';
+import { COLORS, SPACING } from '@theme';
 import translate from '@translations';
 import {
   Fiat,
@@ -22,6 +21,12 @@ import { TransactionDetailsDisplay } from './displays';
 import './TxReceipt.scss';
 import { TxReceiptStatusBadge } from './TxReceiptStatusBadge';
 import { TxReceiptTotals } from './TxReceiptTotals';
+
+const Image = styled.img`
+  height: 25px;
+  margin-right: ${SPACING.SM};
+  vertical-align: middle;
+`;
 
 interface PendingBtnAction {
   text: string;
@@ -81,14 +86,14 @@ export default function MultiTxReceipt({
       {transactions.map((transaction, idx) => {
         const step = steps[idx];
         const { asset, baseAsset, amount } = transactionsConfigs[idx];
-        const { gasPrice, gasLimit, data, nonce, value, to } = transaction.txRaw;
+        const { gasLimit, data, nonce, value, to } = transaction.txRaw;
         const gasUsed =
           transaction.txReceipt && transaction.txReceipt.gasUsed
             ? transaction.txReceipt.gasUsed.toString()
             : gasLimit;
 
         const status = transaction.status;
-        const timestamp = transaction.minedAt || 0; // @todo
+        const timestamp = transaction.minedAt ?? 0; // @todo
         const localTimestamp = new Date(Math.floor(timestamp * 1000)).toLocaleString();
 
         const txUrl = buildTxUrl(network.blockExplorer, transaction.txHash!);
@@ -99,14 +104,14 @@ export default function MultiTxReceipt({
           <div key={idx}>
             <div className="TransactionReceipt-row">
               <div className="TransactionReceipt-row-column" style={{ display: 'flex' }}>
-                <img src={step.icon} alt={step.title} />
+                <Image src={step.icon} alt={step.title} />
                 <div>{step.title}</div>
               </div>
               <div className="TransactionReceipt-row-column">
                 <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
                   {translate('TRANSACTIONS_MULTI', {
-                    $current: idx + 1,
-                    $total: transactions.length
+                    $current: (idx + 1).toString(),
+                    $total: transactions.length.toString()
                   })}
                 </div>
                 {transaction.txHash && (
@@ -126,7 +131,7 @@ export default function MultiTxReceipt({
               assetRate={assetRate}
               baseAssetRate={baseAssetRate}
               settings={settings}
-              gasPrice={gasPrice}
+              rawTransaction={transaction.txRaw}
               gasUsed={gasUsed}
               value={value}
             />
@@ -162,7 +167,6 @@ export default function MultiTxReceipt({
                 data={data}
                 sender={account}
                 gasLimit={bigNumGasLimitToViewable(bigify(gasLimit))}
-                gasPrice={bigify(gasPrice).toString()}
                 nonce={bigify(nonce).toString()}
                 rawTransaction={transaction.txRaw}
                 value={value}
@@ -172,6 +176,7 @@ export default function MultiTxReceipt({
                 status={status}
                 timestamp={timestamp}
                 recipient={to}
+                network={network}
               />
             </div>
           </div>

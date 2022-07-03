@@ -1,5 +1,3 @@
-import React from 'react';
-
 import isEmpty from 'lodash/isEmpty';
 import { OptionProps } from 'react-select';
 import styled from 'styled-components';
@@ -24,7 +22,7 @@ export function AssetSelectorItem({
   uuid,
   ticker,
   name,
-  paddingLeft,
+  paddingLeft = '0',
   onClick
 }: ItemProps) {
   return (
@@ -32,7 +30,7 @@ export function AssetSelectorItem({
       display="flex"
       alignItems="center"
       flexDirection="row"
-      padding={`11px 10px 11px ${paddingLeft || '0px'}`}
+      padding={`11px 10px 11px ${paddingLeft}`}
       {...(onClick ? { onPointerDown: onClick } : null)}
       data-testid={`asset-selector-option-${ticker}`}
     >
@@ -44,8 +42,8 @@ export function AssetSelectorItem({
   );
 }
 
-const Wrapper = styled('div')`
-  width: ${(props: { fluid: boolean }) => (props.fluid ? '100%' : 'default')};
+const Wrapper = styled.div<{ width?: string }>`
+  width: ${(props: { width?: string }) => props.width ?? 'default'};
   min-width: 175px;
   .asset-dropdown-item {
     padding-top: 11px;
@@ -60,7 +58,7 @@ interface AssetSelectorProps<T> {
   showAssetName?: boolean;
   showAssetIcon?: boolean;
   disabled?: boolean;
-  fluid?: boolean;
+  width?: string;
   searchable?: boolean;
   label?: string;
   onSelect(option: T): void;
@@ -77,8 +75,8 @@ function AssetSelector({
   showAssetIcon = true,
   searchable = false,
   disabled = false,
-  fluid = false,
   inputId = 'asset-selector',
+  width,
   ...props
 }: AssetSelectorProps<Asset | ISwapAsset>) {
   useEffectOnce(() => {
@@ -88,7 +86,7 @@ function AssetSelector({
   });
 
   return (
-    <Wrapper fluid={fluid}>
+    <Wrapper width={width}>
       {label && <Label htmlFor={inputId}>{label}</Label>}
       <Selector<TAssetOption>
         inputId={inputId}
@@ -100,7 +98,7 @@ function AssetSelector({
         onChange={(option: TAssetOption) => onSelect(option)}
         getOptionLabel={(option) => (showAssetName ? option.name : option.ticker)}
         optionDivider={true}
-        optionComponent={({ data, selectOption }: OptionProps<TAssetOption>) => {
+        optionComponent={({ data, selectOption }: OptionProps<TAssetOption, false>) => {
           const { ticker, name, uuid } = data;
           return (
             <AssetSelectorItem

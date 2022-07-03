@@ -1,15 +1,14 @@
-import React, { useContext } from 'react';
-
-import { getAccountBalance, getAccountsByAsset, StoreContext, useAssets } from '@services';
+import { getAccountBalance, getAccountsByAsset, useAssets } from '@services';
+import { getStoreAccounts, useSelector } from '@store';
 import { Asset, TUuid } from '@types';
 
 import { ActionTable } from './ActionTable';
 
 export const MigrationTable = ({ assetUuid }: { assetUuid: TUuid }) => {
-  const { accounts } = useContext(StoreContext);
+  const accounts = useSelector(getStoreAccounts);
   const { getAssetByUUID } = useAssets();
 
-  const asset = (getAssetByUUID(assetUuid) || {}) as Asset;
+  const asset = (getAssetByUUID(assetUuid) ?? {}) as Asset;
 
   const relevantAccounts = getAccountsByAsset(accounts, asset);
 

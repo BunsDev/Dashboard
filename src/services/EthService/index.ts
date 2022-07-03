@@ -9,7 +9,7 @@ export {
   AntMigrator,
   GolemV2Migration
 } from './contracts';
-export { Web3Node, isWeb3Node, setupWeb3Node } from './web3';
+export { setupWeb3Node, getApprovedAccounts, requestAccounts } from './web3';
 export {
   isValidPath,
   isValidETHAddress,
@@ -19,15 +19,11 @@ export {
   isValidNonZeroInteger,
   gasPriceValidator,
   gasLimitValidator,
-  isValidSignMessage,
-  isValidGetAccounts,
   isValidAddress,
   isTransactionFeeHigh,
   isChecksumAddress,
   isBurnAddress,
-  isValidRequestPermissions,
   isValidETHRecipientAddress
 } from './validators';
 export { ProviderHandler, getDPath, getDPaths } from './network';
-export { getResolvedENSAddress, isValidENSName } from './ens';
-export * from './utils';
+export { isValidENSName } from './ens';

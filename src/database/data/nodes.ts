@@ -27,7 +27,7 @@ export const NODES_CONFIG: { [key in NetworkId]: StaticNodeConfig[] } = {
       type: NodeType.POCKET,
       service: 'Pocket',
       url: `https://eth-mainnet.gateway.pokt.network/v1/lb/${POCKET_API_KEY}`,
-      disableByDefault: true
+      disableByDefault: false
     }
   ],
 
@@ -37,6 +37,12 @@ export const NODES_CONFIG: { [key in NetworkId]: StaticNodeConfig[] } = {
       type: NodeType.INFURA,
       service: 'Infura',
       url: `https://ropsten.infura.io/v3/${INFURA_API_KEY}`
+    },
+    {
+      name: NetworkUtils.makeNodeName('Ropsten', 'ethscan'),
+      type: NodeType.ETHERSCAN,
+      service: 'Etherscan',
+      url: 'https://api-ropsten.etherscan.io/api'
     }
   ],
 
@@ -46,6 +52,12 @@ export const NODES_CONFIG: { [key in NetworkId]: StaticNodeConfig[] } = {
       type: NodeType.ETHERSCAN,
       service: 'Etherscan',
       url: 'https://api-kovan.etherscan.io/api'
+    },
+    {
+      name: NetworkUtils.makeNodeName('Kovan', 'infura'),
+      type: NodeType.INFURA,
+      service: 'Infura',
+      url: `https://kovan.infura.io/v3/${INFURA_API_KEY}`
     }
   ],
 
@@ -76,6 +88,12 @@ export const NODES_CONFIG: { [key in NetworkId]: StaticNodeConfig[] } = {
       type: NodeType.ETHERSCAN,
       service: 'Etherscan',
       url: 'https://api-goerli.etherscan.io/api'
+    },
+    {
+      name: NetworkUtils.makeNodeName('Goerli', 'infura'),
+      type: NodeType.INFURA,
+      service: 'Infura',
+      url: `https://goerli.infura.io/v3/${INFURA_API_KEY}`
     }
   ],
 
@@ -151,15 +169,6 @@ export const NODES_CONFIG: { [key in NetworkId]: StaticNodeConfig[] } = {
     }
   ],
 
-  DEXON: [
-    {
-      name: NetworkUtils.makeNodeName('DEXON', 'dexon'),
-      type: NodeType.RPC,
-      service: 'dexon.org',
-      url: 'https://mainnet-rpc.dexon.org'
-    }
-  ],
-
   EGEM: [
     {
       name: NetworkUtils.makeNodeName('EGEM', 'egem'),
@@ -223,30 +232,12 @@ export const NODES_CONFIG: { [key in NetworkId]: StaticNodeConfig[] } = {
     }
   ],
 
-  MUSIC: [
-    {
-      name: NetworkUtils.makeNodeName('MUSIC', 'music'),
-      type: NodeType.RPC,
-      service: 'rpc.musicoin.org',
-      url: 'https://rpc.musicoin.org/'
-    }
-  ],
-
   POA: [
     {
       name: NetworkUtils.makeNodeName('POA', 'core'),
       type: NodeType.RPC,
       service: 'core.poa.network',
       url: 'https://core.poa.network'
-    }
-  ],
-
-  REOSC: [
-    {
-      name: NetworkUtils.makeNodeName('REOSC', 'reosc.io'),
-      type: NodeType.RPC,
-      service: 'remote.reosc.io',
-      url: 'https://remote.reosc.io:3000'
     }
   ],
 
@@ -318,15 +309,6 @@ export const NODES_CONFIG: { [key in NetworkId]: StaticNodeConfig[] } = {
     }
   ],
 
-  ERE: [
-    {
-      name: NetworkUtils.makeNodeName('ERE', 'ethercore'),
-      type: NodeType.RPC,
-      service: 'ethercore.io',
-      url: 'https://rpc.ethercore.io'
-    }
-  ],
-
   VOLTA: [
     {
       name: NetworkUtils.makeNodeName('VOLTA', 'volta-rpc.energyweb.org'),
@@ -346,9 +328,33 @@ export const NODES_CONFIG: { [key in NetworkId]: StaticNodeConfig[] } = {
   ],
   MATIC: [
     {
+      name: NetworkUtils.makeNodeName('MATIC', 'maticvigil'),
+      type: NodeType.RPC,
+      service: 'Maticvigil',
+      url: 'https://rpc-mainnet.maticvigil.com'
+    },
+    {
+      name: NetworkUtils.makeNodeName('MATIC', 'quicknode'),
+      type: NodeType.RPC,
+      service: 'Quicknode',
+      url: 'https://rpc-mainnet.matic.quiknode.pro'
+    },
+    {
+      name: NetworkUtils.makeNodeName('MATIC', 'chainstacklabs'),
+      type: NodeType.RPC,
+      service: 'Chainstacklabs',
+      url: 'https://matic-mainnet.chainstacklabs.com'
+    },
+    {
+      name: NetworkUtils.makeNodeName('MATIC', 'bwarelabs'),
+      type: NodeType.RPC,
+      service: 'Bwarelabs',
+      url: 'https://matic-mainnet-full-rpc.bwarelabs.com'
+    },
+    {
       name: NetworkUtils.makeNodeName('MATIC', 'matic'),
       type: NodeType.RPC,
-      service: 'matic',
+      service: 'Matic',
       url: 'https://rpc-mainnet.matic.network'
     }
   ],
@@ -358,6 +364,12 @@ export const NODES_CONFIG: { [key in NetworkId]: StaticNodeConfig[] } = {
       type: NodeType.RPC,
       service: 'xdaichain.com',
       url: 'https://rpc.xdaichain.com/'
+    },
+    {
+      name: NetworkUtils.makeNodeName('xDAI', 'poanetwork.dev'),
+      type: NodeType.RPC,
+      service: 'poanetwork.dev',
+      url: 'https://xdai.poanetwork.dev/'
     }
   ],
   SmartChain: [
@@ -393,10 +405,7 @@ export const NODES_CONFIG: { [key in NetworkId]: StaticNodeConfig[] } = {
   ],
   Avalanche: [
     {
-      name: NetworkUtils.makeNodeName(
-        'Avalanche',
-        'api.avax.network'
-      ),
+      name: NetworkUtils.makeNodeName('Avalanche', 'api.avax.network'),
       type: NodeType.RPC,
       service: 'api.avax.network',
       url: 'https://api.avax.network/ext/bc/C/rpc'
@@ -404,13 +413,50 @@ export const NODES_CONFIG: { [key in NetworkId]: StaticNodeConfig[] } = {
   ],
   AvalancheTestnet: [
     {
-      name: NetworkUtils.makeNodeName(
-        'AvalancheTestnet',
-        'api.avax-test.network'
-      ),
+      name: NetworkUtils.makeNodeName('AvalancheTestnet', 'api.avax-test.network'),
       type: NodeType.RPC,
       service: 'api.avax-test.network',
       url: 'https://api.avax-test.network/ext/bc/C/rpc'
+    }
+  ],
+  EVRICE: [
+    {
+      name: NetworkUtils.makeNodeName('EVRICE', 'meta.evrice.com'),
+      type: NodeType.RPC,
+      service: 'evrice.com',
+      url: 'https://meta.evrice.com'
+    }
+  ],
+  Fantom: [
+    {
+      name: NetworkUtils.makeNodeName('Fantom', 'rpcapi.fantom.network'),
+      type: NodeType.RPC,
+      service: 'fantom.network',
+      url: 'https://rpcapi.fantom.network'
+    }
+  ],
+  HECO: [
+    {
+      name: NetworkUtils.makeNodeName('HECO', 'hecochain.com'),
+      type: NodeType.RPC,
+      service: 'Hecochain.com',
+      url: 'https://http-mainnet.hecochain.com/'
+    }
+  ],
+  XDC: [
+    {
+      name: NetworkUtils.makeNodeName('XDC', 'blocksscan.io'),
+      type: NodeType.RPC,
+      service: 'BlocksScan.io',
+      url: 'https://mycryptorpc.blocksscan.io'
+    }
+  ],
+  XDCApothem: [
+    {
+      name: NetworkUtils.makeNodeName('XDCApothem', 'Apothem.blocksscan.io'),
+      type: NodeType.RPC,
+      service: 'Apothem.BlocksScan.io',
+      url: 'https://mycryptoarpc.blocksscan.io'
     }
   ]
 };

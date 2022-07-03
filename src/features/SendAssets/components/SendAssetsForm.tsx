@@ -1,11 +1,9 @@
-import React, { useContext, useEffect, useMemo, useState } from 'react';
+import { ChangeEvent, useContext, useEffect, useMemo, useState } from 'react';
 
 import { BigNumber } from '@ethersproject/bignumber';
 import { Button as UIBtn } from '@mycrypto/ui';
-import { useFormik } from 'formik';
 import isEmpty from 'lodash/isEmpty';
 import mergeDeepWith from 'ramda/src/mergeDeepWith';
-import { connect, ConnectedProps } from 'react-redux';
 import styled from 'styled-components';
 import { ValuesType } from 'utility-types';
 import { number, object, string } from 'yup';
@@ -19,7 +17,9 @@ import {
   ContactLookupField,
   DemoGatewayBanner,
   InlineMessage,
+  LinkApp,
   Tooltip,
+  TransactionFeeEIP1559,
   WhenQueryExists
 } from '@components';
 import TransactionFeeDisplay from '@components/TransactionFlow/displays/TransactionFeeDisplay';
@@ -27,42 +27,42 @@ import {
   DEFAULT_ASSET_DECIMAL,
   DEFAULT_NETWORK,
   ETHUUID,
-  GAS_LIMIT_LOWER_BOUND,
-  GAS_LIMIT_UPPER_BOUND,
-  GAS_PRICE_GWEI_LOWER_BOUND,
-  GAS_PRICE_GWEI_UPPER_BOUND,
   getKBHelpArticle,
   getWalletConfig,
-  KB_HELP_ARTICLE
+  KB_HELP_ARTICLE,
+  ROUTE_PATHS
 } from '@config';
-import { Fiats, getFiat } from '@config/fiats';
+import { getFiat } from '@config/fiats';
 import { checkFormForProtectTxErrors } from '@features/ProtectTransaction';
 import { ProtectTxShowError } from '@features/ProtectTransaction/components/ProtectTxShowError';
 import { ProtectTxContext } from '@features/ProtectTransaction/ProtectTxProvider';
+import { isEIP1559Supported } from '@helpers';
+import { useGasForm } from '@hooks';
 import { getNonce, useRates } from '@services';
-import { fetchGasPriceEstimates, getGasEstimate } from '@services/ApiService';
 import {
   isBurnAddress,
   isValidETHAddress,
-  isValidPositiveNumber,
-  TxFeeResponseType,
-  validateTxFee
+  isValidPositiveNumber
 } from '@services/EthService/validators';
 import {
   getAccountBalance,
   getAccountsByAsset,
   getBaseAssetByNetwork,
   getNetworkById,
-  StoreContext,
   useAssets,
   useSettings
 } from '@services/Store';
-import { AppState, getIsDemoMode } from '@store';
-import translate, { translateRaw } from '@translations';
+import {
+  getIsDemoMode,
+  getStoreAccounts,
+  getUserAssets,
+  selectNetworks,
+  useSelector
+} from '@store';
+import translate, { Trans, translateRaw } from '@translations';
 import {
   Asset,
   ErrorObject,
-  Fiat,
   IAccount,
   IFormikFields,
   InlineMessageType,
@@ -85,22 +85,22 @@ import {
   formatSupportEmail,
   fromTokenBase,
   gasStringsToMaxGasBN,
+  getDecimals,
   isSameAddress,
   isVoid,
   sortByLabel,
   toTokenBase
 } from '@utils';
-import { path, useDebounce } from '@vendor';
+import { useDebounce } from '@vendor';
 
 import { isERC20Asset, processFormForEstimateGas } from '../helpers';
 import { DataField, GasLimitField, GasPriceField, GasPriceSlider, NonceField } from './fields';
 import './SendAssetsForm.scss';
+import { TxFeeValidation } from './TxFeeValidation';
 import {
   canAffordTX,
   validateAmountField,
   validateDataField,
-  validateGasLimitField,
-  validateGasPriceField,
   validateNonceField
 } from './validators';
 
@@ -114,66 +114,6 @@ const NoMarginCheckbox = styled(Checkbox)`
   margin-bottom: 0;
 `;
 
-const getTxFeeValidation = ({
-  amount = '0',
-  fiat,
-  fee,
-  type
-}: {
-  fiat: Fiat;
-  amount?: string;
-  fee?: string;
-  type: TxFeeResponseType;
-}) => {
-  switch (type) {
-    case 'Warning':
-      return (
-        <InlineMessage
-          type={InlineMessageType.WARNING}
-          value={translate('WARNING_TRANSACTION_FEE', {
-            $amount: `${fiat.symbol}${amount}`,
-            $fee: `${fiat.symbol}${fee}`,
-            $link: getKBHelpArticle(KB_HELP_ARTICLE.WHY_IS_GAS)
-          })}
-        />
-      );
-    case 'Warning-Use-Lower':
-      return (
-        <InlineMessage
-          type={InlineMessageType.WARNING}
-          value={translate('TRANSACTION_FEE_NOTICE', {
-            $fee: `${fiat.symbol}${fee}`,
-            $link: getKBHelpArticle(KB_HELP_ARTICLE.WHY_IS_GAS)
-          })}
-        />
-      );
-    case 'Error-High-Tx-Fee':
-      return (
-        <InlineMessage
-          type={InlineMessageType.ERROR}
-          value={translate('ERROR_HIGH_TRANSACTION_FEE_HIGH', {
-            $fee: `${fiat.symbol}${fee}`,
-            $link: getKBHelpArticle(KB_HELP_ARTICLE.WHY_IS_GAS)
-          })}
-        />
-      );
-    case 'Error-Very-High-Tx-Fee':
-      return (
-        <InlineMessage
-          type={InlineMessageType.ERROR}
-          value={translate('ERROR_HIGH_TRANSACTION_FEE_VERY_HIGH', {
-            $fee: `${fiat.symbol}${fee}`,
-            $link: getKBHelpArticle(KB_HELP_ARTICLE.WHY_IS_GAS)
-          })}
-        />
-      );
-    case 'Invalid':
-    case 'None':
-    default:
-      return <></>;
-  }
-};
-
 const initialFormikValues: IFormikFields = {
   address: {
     value: '',
@@ -184,18 +124,10 @@ const initialFormikValues: IFormikFields = {
   network: {} as Network, // Not a field move to state
   asset: {} as StoreAsset,
   txDataField: '0x',
-  gasEstimates: {
-    // Not a field, move to state
-    fastest: 20,
-    fast: 18,
-    standard: 12,
-    isDefault: false,
-    safeLow: 4,
-    time: Date.now(),
-    chainId: 1
-  },
   gasPriceSlider: '20',
   gasPriceField: '20',
+  maxFeePerGasField: '20',
+  maxPriorityFeePerGasField: '1',
   gasLimitField: '21000',
   advancedTransaction: false,
   nonceField: '0',
@@ -209,36 +141,45 @@ const getInitialFormikValues = ({
   s,
   defaultAccount,
   defaultAsset,
-  defaultNetwork
+  defaultNetwork,
+  networks
 }: {
   s: ITxConfig;
   defaultAccount: StoreAccount | undefined;
   defaultAsset: Asset | undefined;
   defaultNetwork: Network | undefined;
+  networks: Network[];
 }): IFormikFields => {
   const gasPriceInGwei =
-    path(['rawTransaction', 'gasPrice'], s) &&
+    s.rawTransaction &&
+    'gasPrice' in s.rawTransaction &&
     bigNumGasPriceToViewableGwei(bigify(s.rawTransaction.gasPrice));
   const state: Partial<IFormikFields> = {
     amount: s.amount,
     account: !isVoid(s.senderAccount) ? s.senderAccount : defaultAccount,
-    network: !isVoid(s.network) ? s.network : defaultNetwork,
+    network: !isVoid(s.networkId) ? networks.find((n) => n.id === s.networkId) : defaultNetwork,
     asset: !isVoid(s.asset) ? s.asset : defaultAsset,
-    nonceField: s.nonce,
-    txDataField: s.data,
-    address: { value: s.receiverAddress, display: s.receiverAddress },
-    gasLimitField: s.gasLimit && bigify(s.gasLimit).toString(),
+    nonceField: s.rawTransaction?.nonce,
+    txDataField: s.rawTransaction?.data,
+    address: { value: s.receiverAddress!, display: s.receiverAddress! },
+    gasLimitField: s.rawTransaction?.gasLimit && bigify(s.rawTransaction?.gasLimit).toString(),
     gasPriceSlider: gasPriceInGwei as string,
-    gasPriceField: gasPriceInGwei as string
+    gasPriceField: gasPriceInGwei as string,
+    maxFeePerGasField: (s.rawTransaction &&
+      'maxFeePerGas' in s.rawTransaction &&
+      bigNumGasPriceToViewableGwei(bigify(s.rawTransaction.maxFeePerGas))) as string,
+    maxPriorityFeePerGasField: (s.rawTransaction &&
+      'maxPriorityFeePerGas' in s.rawTransaction &&
+      bigNumGasPriceToViewableGwei(bigify(s.rawTransaction.maxPriorityFeePerGas))) as string
   };
 
   const preferValueFromState = (l: FieldValue, r: FieldValue): FieldValue => (isEmpty(r) ? l : r);
   return mergeDeepWith(preferValueFromState, initialFormikValues, state);
 };
 
-const createQueryWarning = (translationId?: string) => (
+const createQueryWarning = (translationId: string = 'WARN_SEND_LINK') => (
   <div className="alert alert-info">
-    <p>{translate(translationId || 'WARN_SEND_LINK')}</p>
+    <p>{translate(translationId)}</p>
   </div>
 );
 
@@ -249,18 +190,19 @@ interface ISendFormProps extends IStepComponentProps {
   protectTxButton?(): JSX.Element;
 }
 
-const SendAssetsForm = ({ txConfig, onComplete, protectTxButton, isDemoMode }: Props) => {
-  const { accounts, userAssets, networks, getDefaultAccount: getDefaultStoreAccount } = useContext(
-    StoreContext
-  );
-  const { getAssetRate, getAssetRateInCurrency } = useRates();
+export const SendAssetsForm = ({ txConfig, onComplete, protectTxButton }: ISendFormProps) => {
+  const accounts = useSelector(getStoreAccounts);
+  const networks = useSelector(selectNetworks);
+  const { getAssetRate } = useRates();
   const { getAssetByUUID, assets } = useAssets();
   const { settings } = useSettings();
-  const [isEstimatingGasLimit, setIsEstimatingGasLimit] = useState(false); // Used to indicate that interface is currently estimating gas.
-  const [gasEstimationError, setGasEstimationError] = useState<string | undefined>(undefined);
   const [isEstimatingNonce, setIsEstimatingNonce] = useState(false); // Used to indicate that interface is currently estimating gas.
   const [isResolvingName, setIsResolvingDomain] = useState(false); // Used to indicate recipient-address is ENS name that is currently attempting to be resolved.
   const [fetchedNonce, setFetchedNonce] = useState(0);
+  const [isSendMax, toggleIsSendMax] = useState(false);
+
+  const userAssets = useSelector(getUserAssets);
+  const isDemoMode = useSelector(getIsDemoMode);
 
   const EthAsset = getAssetByUUID(ETHUUID as TUuid)!;
 
@@ -276,12 +218,7 @@ const SendAssetsForm = ({ txConfig, onComplete, protectTxButton, isDemoMode }: P
   })();
 
   const getDefaultAccount = (asset?: Asset) => {
-    const storeDefaultAccount = getDefaultStoreAccount(false, asset?.networkId);
-    if (
-      storeDefaultAccount !== undefined &&
-      asset !== undefined &&
-      !storeDefaultAccount.assets.some((a) => a.uuid === asset.uuid)
-    ) {
+    if (asset) {
       const accountsWithDefaultAsset = validAccounts.filter((account) =>
         account.assets.some((a) => a.uuid === asset.uuid)
       );
@@ -289,19 +226,13 @@ const SendAssetsForm = ({ txConfig, onComplete, protectTxButton, isDemoMode }: P
         return sortByLabel(accountsWithDefaultAsset)[0];
       }
     }
-    return storeDefaultAccount;
+    return undefined;
   };
   const getDefaultNetwork = (account?: StoreAccount) =>
     networks.find((n) => n.id === (account !== undefined ? account.networkId : DEFAULT_NETWORK));
 
   const defaultAccount = getDefaultAccount(defaultAsset);
   const defaultNetwork = getDefaultNetwork(defaultAccount);
-  const [baseAsset, setBaseAsset] = useState(
-    (txConfig.network &&
-      getBaseAssetByNetwork({ network: txConfig.network, assets: userAssets })) ||
-      (defaultNetwork && getBaseAssetByNetwork({ network: defaultNetwork, assets: userAssets })) ||
-      ({} as Asset)
-  );
 
   const {
     protectTxFeatureFlag,
@@ -322,6 +253,14 @@ const SendAssetsForm = ({ txConfig, onComplete, protectTxButton, isDemoMode }: P
             const asset = this.parent.asset;
             if (!isEmpty(account)) {
               const balance = getAccountBalance(account, asset.type === 'base' ? undefined : asset);
+              const decimals = getDecimals(value);
+              if (decimals > asset.decimal) {
+                return this.createError({
+                  message: translateRaw('TOO_MANY_DECIMALS', {
+                    $decimals: asset.decimal.toString()
+                  })
+                });
+              }
               const amount = BigNumber.from(toTokenBase(value, asset.decimal).toString());
               if (balance.lt(amount)) {
                 return this.createError({
@@ -340,6 +279,9 @@ const SendAssetsForm = ({ txConfig, onComplete, protectTxButton, isDemoMode }: P
     account: object().required(translateRaw('REQUIRED')),
     address: object()
       .required(translateRaw('REQUIRED'))
+      .test('valid', translateRaw('TO_FIELD_ERROR'), function (value) {
+        return value && value.value && isValidETHAddress(value.value);
+      })
       // @ts-expect-error Hack as Formik doesn't officially support warnings
       // tslint:disable-next-line
       .test('check-sending-to-burn', translateRaw('SENDING_TO_BURN_ADDRESS'), function (value) {
@@ -383,18 +325,6 @@ const SendAssetsForm = ({ txConfig, onComplete, protectTxButton, isDemoMode }: P
         }
         return true;
       }),
-    gasLimitField: number()
-      .min(GAS_LIMIT_LOWER_BOUND, translateRaw('ERROR_8'))
-      .max(GAS_LIMIT_UPPER_BOUND, translateRaw('ERROR_8'))
-      .required(translateRaw('REQUIRED'))
-      .typeError(translateRaw('ERROR_8'))
-      .test(validateGasLimitField()),
-    gasPriceField: number()
-      .min(GAS_PRICE_GWEI_LOWER_BOUND, translateRaw('LOW_GAS_PRICE_WARNING'))
-      .max(GAS_PRICE_GWEI_UPPER_BOUND, translateRaw('ERROR_10'))
-      .required(translateRaw('REQUIRED'))
-      .typeError(translateRaw('GASPRICE_ERROR'))
-      .test(validateGasPriceField()),
     nonceField: number()
       .integer(translateRaw('ERROR_11'))
       .min(0, translateRaw('ERROR_11'))
@@ -422,7 +352,8 @@ const SendAssetsForm = ({ txConfig, onComplete, protectTxButton, isDemoMode }: P
         s: txConfig,
         defaultAccount,
         defaultAsset,
-        defaultNetwork
+        defaultNetwork,
+        networks
       }),
     []
   );
@@ -434,8 +365,19 @@ const SendAssetsForm = ({ txConfig, onComplete, protectTxButton, isDemoMode }: P
     setFieldError,
     resetForm,
     errors,
-    touched
-  } = useFormik({
+    touched,
+    legacyGasEstimates,
+    isEstimatingGasPrice,
+    isEstimatingGasLimit,
+    gasEstimationError,
+    baseFee,
+    handleGasPriceChange,
+    handleGasLimitChange,
+    handleMaxFeeChange,
+    handleMaxPriorityFeeChange,
+    handleGasPriceEstimation: performGasPriceEstimation,
+    handleGasLimitEstimation
+  } = useGasForm({
     initialValues,
     validationSchema: SendAssetsSchema,
     onSubmit: (fields) => {
@@ -443,45 +385,61 @@ const SendAssetsForm = ({ txConfig, onComplete, protectTxButton, isDemoMode }: P
     }
   });
 
+  const network = values.network;
+  const baseAsset = !isVoid(network)
+    ? getBaseAssetByNetwork({ network, assets })!
+    : getBaseAssetByNetwork({ network: defaultNetwork!, assets })!;
+
+  const isEIP1559 = isEIP1559Supported(network, values.account);
+
+  const gasPrice = isEIP1559
+    ? values.maxFeePerGasField.toString()
+    : values.advancedTransaction
+    ? values.gasPriceField.toString()
+    : values.gasPriceSlider.toString();
+
   useEffect(() => {
-    if (updateFormValues) {
+    if (updateFormValues && ptxState.protectTxShow) {
       updateFormValues(values);
     }
-  }, [values]);
+  }, [values, ptxState?.protectTxShow]);
 
   useEffect(() => {
     handleNonceEstimate(values.account);
   }, [values.account]);
+
+  useEffect(() => {
+    handleGasPriceEstimation();
+  }, [values.account, values.network]);
 
   useDebounce(
     () => {
       handleGasEstimate();
     },
     500,
-    [values.account, values.address, values.amount]
+    [values.account, values.address, values.amount, values.txDataField]
   );
+
+  const handleGasPriceEstimation = (network = values.network) =>
+    performGasPriceEstimation(network, values.account);
 
   useEffect(() => {
     const asset = values.asset;
     const newAccount = getDefaultAccount(asset);
     const newInitialValues = getInitialFormikValues({
-      s: txConfig,
+      // @ts-expect-error @todo Fix reliance on txConfig being {}
+      s: asset.uuid === txConfig.asset?.uuid ? txConfig : {},
       defaultAccount: newAccount,
       defaultAsset: asset,
-      defaultNetwork: getDefaultNetwork(newAccount)
+      defaultNetwork: getDefaultNetwork(newAccount),
+      networks
     });
     //@todo get assetType onChange
     resetForm({ values: { ...newInitialValues, asset } });
     if (asset && asset.networkId) {
       const network = getNetworkById(asset.networkId, networks);
-      fetchGasPriceEstimates(network).then((data) => {
-        setFieldValue('gasEstimates', data);
-        setFieldValue('gasPriceSlider', data.fast);
-      });
+      handleGasPriceEstimation(network);
       setFieldValue('network', network || {});
-      if (network) {
-        setBaseAsset(getBaseAssetByNetwork({ network, assets: userAssets }) || ({} as Asset));
-      }
     }
   }, [values.asset]);
 
@@ -502,7 +460,8 @@ const SendAssetsForm = ({ txConfig, onComplete, protectTxButton, isDemoMode }: P
       handleGasEstimate(true);
     }
   };
-  const handleGasEstimate = async (forceEstimate: boolean = false) => {
+
+  const handleGasEstimate = (forceEstimate: boolean = false) => {
     if (
       values &&
       values.network &&
@@ -513,18 +472,8 @@ const SendAssetsForm = ({ txConfig, onComplete, protectTxButton, isDemoMode }: P
       isValidPositiveNumber(values.amount) &&
       (values.isAutoGasSet || forceEstimate)
     ) {
-      setIsEstimatingGasLimit(true);
       const finalTx = processFormForEstimateGas(values);
-      try {
-        const gas = await getGasEstimate(values.network, finalTx);
-        setFieldValue('gasLimitField', gas);
-        setGasEstimationError(undefined);
-      } catch (err) {
-        setGasEstimationError(err.reason ? err.reason : err.message);
-      }
-      setIsEstimatingGasLimit(false);
-    } else {
-      return;
+      handleGasLimitEstimation(values.network, finalTx);
     }
   };
 
@@ -533,7 +482,6 @@ const SendAssetsForm = ({ txConfig, onComplete, protectTxButton, isDemoMode }: P
       const accountBalance = getAccountBalance(values.account, values.asset);
       const isERC20 = isERC20Asset(values.asset);
       const balance = fromTokenBase(bigify(accountBalance), values.asset.decimal);
-      const gasPrice = values.advancedTransaction ? values.gasPriceField : values.gasPriceSlider;
       const amount = isERC20 // subtract gas cost from balance when sending a base asset
         ? balance
         : baseToConvertedUnit(
@@ -547,34 +495,57 @@ const SendAssetsForm = ({ txConfig, onComplete, protectTxButton, isDemoMode }: P
   };
 
   const handleNonceEstimate = async (account: IAccount) => {
-    if (!values || !values.network || !account) {
+    if (!values || !values.network || isVoid(account)) {
       return;
     }
     setIsEstimatingNonce(true);
-    const nonce: number = await getNonce(values.network, account.address);
-    setFieldValue('nonceField', nonce.toString());
-    setFetchedNonce(nonce);
+    try {
+      const nonce: number = await getNonce(values.network, account.address);
+      setFieldValue('nonceField', nonce.toString());
+      setFetchedNonce(nonce);
+    } catch (err) {
+      console.error(err);
+    }
     setIsEstimatingNonce(false);
   };
 
+  const handleAssetChange = (asset: StoreAsset) => setFieldValue('asset', asset || {});
+  const handleAccountChange = (account: StoreAccount) => setFieldValue('account', account);
+  const handleAmountChange = (e: ChangeEvent<HTMLInputElement>) =>
+    setFieldValue('amount', e.target.value);
+  const handleGasSliderChange = (value: number) => setFieldValue('gasPriceSlider', value);
+  const handleNonceChange = (value: string) => setFieldValue('nonceField', value);
+  const handleDataChange = (value: string) => setFieldValue('txDataField', value);
+  const handleAdvancedTransactionToggle = () =>
+    setFieldValue('advancedTransaction', !values.advancedTransaction);
+
   const accountsWithAsset = getAccountsByAsset(validAccounts, values.asset);
 
-  const userCanAffordTX = canAffordTX(baseAsset, values);
+  const userCanAffordTX = canAffordTX(baseAsset, values, gasPrice);
   const formHasErrors = !checkFormValid(errors);
 
   const isFormValid = !formHasErrors && !gasEstimationError && userCanAffordTX;
   const walletConfig = getWalletConfig(values.account.wallet || WalletId.WEB3);
   const supportsNonce = walletConfig.flags.supportsNonce;
 
-  const { type, amount, fee } = validateTxFee(
-    values.amount,
-    getAssetRateInCurrency(baseAsset, Fiats.USD.ticker),
-    getAssetRateInCurrency(baseAsset, getFiat(settings).ticker),
-    isERC20Asset(values.asset),
-    values.gasLimitField.toString(),
-    values.advancedTransaction ? values.gasPriceField.toString() : values.gasPriceSlider.toString(),
-    getAssetRateInCurrency(EthAsset, Fiats.USD.ticker)
-  );
+  const fiat = getFiat(settings);
+
+  const baseAssetRate = (getAssetRate(baseAsset) ?? 0).toString();
+
+  useEffect(() => {
+    if (isSendMax) {
+      setAmountFieldToAssetMax();
+    }
+  }, [
+    values.gasPriceField,
+    values.gasPriceSlider,
+    values.asset,
+    values.account,
+    values.advancedTransaction,
+    values.gasLimitField,
+    values.maxFeePerGasField,
+    isSendMax
+  ]);
 
   return (
     <div className="SendAssetsForm">
@@ -590,9 +561,7 @@ const SendAssetsForm = ({ txConfig, onComplete, protectTxButton, isDemoMode }: P
           assets={userAssets}
           searchable={true}
           showAssetName={true}
-          onSelect={(option: StoreAsset) => {
-            setFieldValue('asset', option || {}); //if this gets deleted, it no longer shows as selected on interface (find way to not need this)
-          }}
+          onSelect={handleAssetChange}
         />
       </fieldset>
       {/* Sender Address */}
@@ -607,11 +576,31 @@ const SendAssetsForm = ({ txConfig, onComplete, protectTxButton, isDemoMode }: P
           name="account"
           value={values.account}
           accounts={accountsWithAsset}
-          onSelect={(account: StoreAccount) => {
-            setFieldValue('account', account); //if this gets deleted, it no longer shows as selected on interface, would like to set only object keys that are needed instead of full object
-          }}
+          onSelect={handleAccountChange}
           asset={values.asset}
         />
+        {accountsWithAsset.length === 0 && (
+          <InlineMessage type={InlineMessageType.WARNING}>
+            <Trans
+              id="NO_NON_VIEW_ONLY_ACCOUNTS"
+              variables={{
+                $link_add_account: () => (
+                  <LinkApp href={ROUTE_PATHS.ADD_ACCOUNT.path}>
+                    {translateRaw('ADD_AN_ACCOUNT')}
+                  </LinkApp>
+                ),
+                $link_support: () => (
+                  <LinkApp
+                    href={getKBHelpArticle(KB_HELP_ARTICLE.HOW_DOES_VIEW_ADDRESS_WORK)}
+                    isExternal={true}
+                  >
+                    {translateRaw('VIEW_ONLY_ADDRESSES')}
+                  </LinkApp>
+                )
+              }}
+            />
+          </InlineMessage>
+        )}
       </fieldset>
       <fieldset className="SendAssetsForm-fieldset">
         <label htmlFor="address" className="input-group-header">
@@ -633,16 +622,18 @@ const SendAssetsForm = ({ txConfig, onComplete, protectTxButton, isDemoMode }: P
       <fieldset className="SendAssetsForm-fieldset">
         <label htmlFor="amount" className="input-group-header label-with-action">
           <div>{translate('SEND_ASSETS_AMOUNT_LABEL')}</div>
-          <div className="label-action" onClick={setAmountFieldToAssetMax}>
-            {translateRaw('SEND_ASSETS_AMOUNT_LABEL_ACTION').toLowerCase()}
-          </div>
+          <NoMarginCheckbox
+            onChange={() => toggleIsSendMax(!isSendMax)}
+            checked={isSendMax}
+            name="isSendMax"
+            label={translateRaw('SEND_ASSETS_AMOUNT_LABEL_ACTION')}
+          />
         </label>
         <>
           <AmountInput
             name="amount"
-            onChange={(e) => {
-              setFieldValue('amount', e.target.value);
-            }}
+            onChange={handleAmountChange}
+            disabled={isSendMax}
             asset={values.asset}
             value={values.amount}
             onBlur={() => {
@@ -657,89 +648,116 @@ const SendAssetsForm = ({ txConfig, onComplete, protectTxButton, isDemoMode }: P
       </fieldset>
       {/* Transaction Fee */}
       <fieldset className="SendAssetsForm-fieldset">
-        <label htmlFor="transactionFee" className="SendAssetsForm-fieldset-transactionFee">
-          <div>{translate('CONFIRM_TX_FEE')}</div>
-          <TransactionFeeDisplay
+        {!isEIP1559 && (
+          <label
+            htmlFor="transactionFee"
+            className="SendAssetsForm-fieldset-transactionFee input-group-header"
+          >
+            <div>{translate('CONFIRM_TX_FEE')}</div>
+            <TransactionFeeDisplay
+              baseAsset={baseAsset}
+              gasLimitToUse={values.gasLimitField}
+              gasPriceToUse={
+                values.advancedTransaction ? values.gasPriceField : values.gasPriceSlider
+              }
+              fiatAsset={{
+                fiat: fiat.ticker,
+                rate: baseAssetRate,
+                symbol: fiat.symbol
+              }}
+            />
+          </label>
+        )}
+        {isEIP1559 && (
+          <TransactionFeeEIP1559
             baseAsset={baseAsset}
-            gasLimitToUse={values.gasLimitField}
-            gasPriceToUse={
-              values.advancedTransaction ? values.gasPriceField : values.gasPriceSlider
-            }
-            fiatAsset={{
-              fiat: getFiat(settings).ticker,
-              rate: (getAssetRate(baseAsset) || 0).toString(),
-              symbol: getFiat(settings).symbol
-            }}
+            baseFee={baseFee}
+            baseAssetRate={baseAssetRate}
+            fiat={fiat}
+            gasLimit={values.gasLimitField}
+            maxFeePerGas={values.maxFeePerGasField}
+            maxPriorityFeePerGas={values.maxPriorityFeePerGasField}
+            setGasLimit={handleGasLimitChange}
+            setMaxFeePerGas={handleMaxFeeChange}
+            setMaxPriorityFeePerGas={handleMaxPriorityFeeChange}
+            gasLimitError={errors && errors.gasLimitField}
+            maxFeePerGasError={errors && errors.maxFeePerGasField}
+            maxPriorityFeePerGasError={errors && errors.maxPriorityFeePerGasField}
+            handleGasPriceEstimation={handleGasPriceEstimation}
+            handleGasLimitEstimation={handleGasEstimate}
+            isEstimatingGasLimit={isEstimatingGasLimit}
+            isEstimatingGasPrice={isEstimatingGasPrice}
           />
-        </label>
-        {!values.advancedTransaction && (
+        )}
+        {!values.advancedTransaction && !isEIP1559 && (
           <GasPriceSlider
             network={values.network}
             gasPrice={values.gasPriceSlider}
-            gasEstimates={values.gasEstimates}
-            onChange={(g) => setFieldValue('gasPriceSlider', g)}
+            gasEstimates={legacyGasEstimates}
+            onChange={handleGasSliderChange}
           />
         )}
-        {getTxFeeValidation({
-          type,
-          amount,
-          fee,
-          fiat: getFiat(settings)
-        })}
+        <TxFeeValidation
+          amount={values.amount}
+          baseAsset={baseAsset}
+          asset={values.asset}
+          gasLimit={values.gasLimitField}
+          fiat={fiat}
+          gasPrice={gasPrice}
+          ethAsset={EthAsset}
+          baseFee={baseFee}
+        />
       </fieldset>
       {/* Advanced Options */}
       <div className="SendAssetsForm-advancedOptions">
-        <AdvancedOptionsButton
-          basic={true}
-          onClick={() => setFieldValue('advancedTransaction', !values.advancedTransaction)}
-        >
+        <AdvancedOptionsButton basic={true} onClick={handleAdvancedTransactionToggle}>
           {values.advancedTransaction ? translateRaw('HIDE') : translateRaw('SHOW')}{' '}
           {translate('ADVANCED_OPTIONS_LABEL')}
         </AdvancedOptionsButton>
         {values.advancedTransaction && (
           <div className="SendAssetsForm-advancedOptions-content">
-            <div className="SendAssetsForm-advancedOptions-content-priceLimitNonceData">
-              <div className="SendAssetsForm-advancedOptions-content-priceLimitNonceData-limit">
-                <label htmlFor="gasLimit" className="input-group-header label-with-action">
-                  <div>
-                    {translate('OFFLINE_STEP2_LABEL_4')}
-                    <Tooltip tooltip={translate('GAS_LIMIT_TOOLTIP')} />
-                  </div>
-                  <NoMarginCheckbox
-                    onChange={toggleIsAutoGasSet}
-                    checked={values.isAutoGasSet}
-                    name="autoGasSet"
-                    label={translateRaw('TRANS_AUTO_GAS_TOGGLE')}
-                  />
-                </label>
+            {!isEIP1559 && (
+              <>
+                <div className="SendAssetsForm-advancedOptions-content-priceLimitNonceData">
+                  <div className="SendAssetsForm-advancedOptions-content-priceLimitNonceData-limit">
+                    <label htmlFor="gasLimit" className="input-group-header label-with-action">
+                      <div>
+                        {translate('OFFLINE_STEP2_LABEL_4')}
+                        <Tooltip tooltip={translate('GAS_LIMIT_TOOLTIP')} />
+                      </div>
+                      <NoMarginCheckbox
+                        onChange={toggleIsAutoGasSet}
+                        checked={values.isAutoGasSet}
+                        name="autoGasSet"
+                        label={translateRaw('TRANS_AUTO_GAS_TOGGLE')}
+                      />
+                    </label>
 
-                <GasLimitField
-                  onChange={(option: string) => {
-                    setFieldValue('gasLimitField', option);
-                  }}
-                  name="gasLimitField"
-                  value={values.gasLimitField}
-                  disabled={values.isAutoGasSet}
-                  error={errors && errors.gasLimitField}
-                />
-              </div>
-            </div>
-            <div className="SendAssetsForm-advancedOptions-content-priceLimitNonceData">
-              <div className="SendAssetsForm-advancedOptions-content-priceLimitNonceData-price">
-                <label htmlFor="gasPrice">
-                  {translate('OFFLINE_STEP2_LABEL_3')}
-                  <Tooltip tooltip={translate('GAS_PRICE_TOOLTIP')} />
-                </label>
-                <GasPriceField
-                  onChange={(option: string) => {
-                    setFieldValue('gasPriceField', option);
-                  }}
-                  name="gasPriceField"
-                  value={values.gasPriceField}
-                  error={errors && errors.gasPriceField}
-                />
-              </div>
-            </div>
+                    <GasLimitField
+                      onChange={handleGasLimitChange}
+                      name="gasLimitField"
+                      value={values.gasLimitField}
+                      disabled={values.isAutoGasSet}
+                      error={errors && errors.gasLimitField}
+                    />
+                  </div>
+                </div>
+                <div className="SendAssetsForm-advancedOptions-content-priceLimitNonceData">
+                  <div className="SendAssetsForm-advancedOptions-content-priceLimitNonceData-price">
+                    <label htmlFor="gasPrice">
+                      {translate('GAS_PRICE')}
+                      <Tooltip tooltip={translate('GAS_PRICE_TOOLTIP')} />
+                    </label>
+                    <GasPriceField
+                      onChange={handleGasPriceChange}
+                      name="gasPriceField"
+                      value={values.gasPriceField}
+                      error={errors && errors.gasPriceField}
+                    />
+                  </div>
+                </div>
+              </>
+            )}
             <div className="SendAssetsForm-advancedOptions-content-priceLimitNonceData">
               <div className="SendAssetsForm-advancedOptions-content-priceLimitNonceData-nonce">
                 <label htmlFor="nonce">
@@ -749,9 +767,7 @@ const SendAssetsForm = ({ txConfig, onComplete, protectTxButton, isDemoMode }: P
                   </div>
                 </label>
                 <NonceField
-                  onChange={(option: string) => {
-                    setFieldValue('nonceField', option);
-                  }}
+                  onChange={handleNonceChange}
                   name="nonceField"
                   value={values.nonceField}
                   error={
@@ -771,9 +787,7 @@ const SendAssetsForm = ({ txConfig, onComplete, protectTxButton, isDemoMode }: P
                   <div className="SendAssetsForm-advancedOptions-content-priceLimitNonceData-data">
                     <label htmlFor="data">{translate('TRANS_DATA')}</label>
                     <DataField
-                      onChange={(option: string) => {
-                        setFieldValue('txDataField', option);
-                      }}
+                      onChange={handleDataChange}
                       errors={errors.txDataField}
                       name="txDataField"
                       value={values.txDataField}
@@ -821,12 +835,3 @@ const SendAssetsForm = ({ txConfig, onComplete, protectTxButton, isDemoMode }: P
     </div>
   );
 };
-
-const mapStateToProps = (state: AppState) => ({
-  isDemoMode: getIsDemoMode(state)
-});
-
-const connector = connect(mapStateToProps);
-type Props = ConnectedProps<typeof connector> & ISendFormProps;
-
-export default connector(SendAssetsForm);

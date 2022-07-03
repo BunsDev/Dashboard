@@ -1,7 +1,5 @@
-import React, { useContext } from 'react';
-
 import { ConfirmTransaction, SwapFromToDiagram } from '@components';
-import { StoreContext } from '@services';
+import { getAccountsAssets, useSelector } from '@store';
 import { ITxMultiConfirmProps, ITxType } from '@types';
 
 import { makeSwapTxConfig } from '../helpers';
@@ -12,12 +10,12 @@ export default function ConfirmSwap({
   account,
   transactions,
   currentTxIdx,
-  onComplete
+  onComplete,
+  error
 }: ITxMultiConfirmProps) {
   const { fromAsset, toAsset, fromAmount, toAmount } = flowConfig as IAssetPair;
-  const { assets: getAssets } = useContext(StoreContext);
 
-  const currentAssets = getAssets();
+  const currentAssets = useSelector(getAccountsAssets);
 
   const txConfigs = transactions.map((tx) =>
     makeSwapTxConfig(currentAssets)(tx.txRaw, account, fromAsset, fromAmount.toString())
@@ -29,6 +27,7 @@ export default function ConfirmSwap({
     <ConfirmTransaction
       resetFlow={() => onComplete && onComplete()}
       onComplete={() => onComplete && onComplete()}
+      error={error}
       txConfig={txConfig}
       txType={ITxType.SWAP}
       customComponent={() => (

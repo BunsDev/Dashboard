@@ -23,6 +23,7 @@ export const mockFactory = (validHash: string) => {
   };
   return {
     FallbackProvider: jest.fn().mockImplementation(() => ({
+      waitForTransaction: jest.fn().mockResolvedValue(txResponse),
       providers: [
         {
           getTransaction: jest

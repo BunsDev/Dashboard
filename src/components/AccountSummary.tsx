@@ -1,5 +1,3 @@
-import React from 'react';
-
 import styled from 'styled-components';
 
 import { TTicker, TUuid } from '@types';
@@ -21,7 +19,7 @@ interface Props {
 }
 
 const SCurrency = styled(Currency)`
-  margin-left: 58px;
+  margin-left: 46px;
 `;
 
 // To change the hover behavior on Address, we need it to be a SC.
@@ -58,7 +56,7 @@ function AccountSummary({
       {balance && uuid && (
         <SCurrency
           amount={balance}
-          ticker={assetTicker || ('ETH' as TTicker)}
+          ticker={assetTicker ?? ('ETH' as TTicker)}
           uuid={uuid}
           decimals={4}
           icon={true}

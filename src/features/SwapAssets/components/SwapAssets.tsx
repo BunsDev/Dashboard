@@ -1,6 +1,6 @@
-import React, { useCallback, useContext, useEffect, useState } from 'react';
+import { ChangeEvent, useCallback, useEffect, useState } from 'react';
 
-import { connect, ConnectedProps } from 'react-redux';
+import debounce from 'lodash/debounce';
 import styled from 'styled-components';
 
 import {
@@ -10,27 +10,31 @@ import {
   Box,
   Button,
   DemoGatewayBanner,
+  Icon,
   InlineMessage,
   InputField,
+  LinkApp,
+  NetworkSelector,
   PoweredByText,
   Tooltip
 } from '@components';
+import { DEX_NETWORKS } from '@config';
 import { useRates } from '@services/Rates';
-import { StoreContext } from '@services/Store';
 import {
-  AppState,
   getBaseAssetByNetwork,
   getIsDemoMode,
   getSettings,
-  selectDefaultNetwork
+  getStoreAccounts,
+  getUserAssets,
+  selectNetwork,
+  useSelector
 } from '@store';
 import { SPACING } from '@theme';
 import translate, { translateRaw } from '@translations';
-import { Asset, ExtendedAsset, ISwapAsset, Network, StoreAccount } from '@types';
-import { bigify, getTimeDifference, totalTxFeeToString, useInterval } from '@utils';
-import { useDebounce } from '@vendor';
+import { Asset, ISwapAsset, Network, NetworkId, StoreAccount } from '@types';
+import { getTimeDifference, sortByLabel, useInterval } from '@utils';
 
-import { getAccountsWithAssetBalance, getUnselectedAssets } from '../helpers';
+import { getAccountsWithAssetBalance, getEstimatedGasFee, getUnselectedAssets } from '../helpers';
 import { SwapFormState } from '../types';
 import { SwapQuote } from './SwapQuote';
 
@@ -42,7 +46,7 @@ const StyledButton = styled(Button)`
   }
 `;
 
-type ISwapProps = SwapFormState & {
+type Props = SwapFormState & {
   isSubmitting: boolean;
   txError?: CustomError;
   onSuccess(): void;
@@ -55,10 +59,14 @@ type ISwapProps = SwapFormState & {
   handleAccountSelected(account?: StoreAccount): void;
   handleGasLimitEstimation(): void;
   handleRefreshQuote(): void;
+  handleFlipAssets(): void;
+  handleSwapMax(): void;
+  setNetwork(network: NetworkId): void;
 };
 
 const SwapAssets = (props: Props) => {
   const {
+    selectedNetwork,
     account,
     fromAmount,
     toAmount,
@@ -81,6 +89,8 @@ const SwapAssets = (props: Props) => {
     handleAccountSelected,
     handleGasLimitEstimation,
     handleRefreshQuote,
+    handleFlipAssets,
+    handleSwapMax,
     approvalTx,
     exchangeRate,
     approvalGasLimit,
@@ -88,14 +98,20 @@ const SwapAssets = (props: Props) => {
     gasPrice,
     isEstimatingGas,
     expiration,
-    isDemoMode,
-    baseAsset,
-    settings
+    setNetwork,
+    gas
   } = props;
 
+  const settings = useSelector(getSettings);
+  const isDemoMode = useSelector(getIsDemoMode);
+  const network = useSelector(selectNetwork(selectedNetwork));
+  const baseAsset = useSelector(getBaseAssetByNetwork(network));
+
   const [isExpired, setIsExpired] = useState(false);
-  const { accounts, userAssets } = useContext(StoreContext);
+  const accounts = useSelector(getStoreAccounts);
   const { getAssetRate } = useRates();
+
+  const userAssets = useSelector(getUserAssets);
 
   const baseAssetRate = getAssetRate(baseAsset);
   const fromAssetRate = fromAsset && getAssetRate(fromAsset as Asset);
@@ -106,73 +122,71 @@ const SwapAssets = (props: Props) => {
     userAssets.find((userAsset) => a.uuid === userAsset.uuid)
   );
 
-  const [, , calculateNewToAmountDebounced] = useDebounce(
-    useCallback(() => {
-      calculateNewToAmount(fromAmount);
-    }, [fromAmount, account]),
-    500
-  );
+  const calculateNewToAmountDebounced = useCallback(debounce(calculateNewToAmount, 500), [
+    account,
+    fromAsset,
+    toAsset
+  ]);
 
   // SEND AMOUNT CHANGED
-  const handleFromAmountChangedEvent = (e: React.ChangeEvent<HTMLSelectElement>) => {
+  const handleFromAmountChangedEvent = (e: ChangeEvent<HTMLSelectElement>) => {
     const value = e.target.value;
     handleFromAmountChanged(value);
 
-    calculateNewToAmountDebounced();
+    calculateNewToAmountDebounced(value);
   };
 
-  const [, , calculateNewFromAmountDebounced] = useDebounce(
-    useCallback(() => {
-      calculateNewFromAmount(toAmount);
-    }, [toAmount, account]),
-    500
-  );
+  const calculateNewFromAmountDebounced = useCallback(debounce(calculateNewFromAmount, 500), [
+    account,
+    fromAsset,
+    toAsset
+  ]);
 
   // RECEIVE AMOUNT CHANGED
-  const handleToAmountChangedEvent = async (e: React.ChangeEvent<HTMLSelectElement>) => {
+  const handleToAmountChangedEvent = async (e: ChangeEvent<HTMLSelectElement>) => {
     const value = e.target.value;
     handleToAmountChanged(value);
 
-    calculateNewFromAmountDebounced();
+    calculateNewFromAmountDebounced(value);
   };
 
-  // Calculate new "to amount" after "to asset" is selected
-  useEffect(() => {
-    if (!fromAmount) {
-      return;
-    }
+  const estimatedGasFee = getEstimatedGasFee({
+    tradeGasLimit,
+    approvalGasLimit,
+    baseAssetRate,
+    gas
+  });
 
-    calculateNewToAmount(fromAmount);
-  }, [toAsset]);
+  // Accounts with a balance of the chosen asset and base asset
+  const filteredAccounts = fromAsset
+    ? getAccountsWithAssetBalance(accounts, fromAsset, fromAmount, baseAsset.uuid, estimatedGasFee)
+    : [];
+
+  useEffect(() => {
+    const defaultAccount = sortByLabel(filteredAccounts)[0];
+    if (defaultAccount && ((account && account.uuid !== defaultAccount.uuid) || !account)) {
+      handleAccountSelected(defaultAccount);
+    }
+  }, [JSON.stringify(filteredAccounts)]);
 
   useEffect(() => {
     if (
       fromAmount &&
       fromAsset &&
       account &&
-      !getAccountsWithAssetBalance(accounts, fromAsset, fromAmount).find(
-        (a) => a.uuid === account.uuid
-      )
+      !filteredAccounts.find((a) => a.uuid === account.uuid)
     ) {
       handleAccountSelected(undefined);
     }
-  }, [fromAsset, fromAmount]);
+  }, [fromAsset, fromAmount, gasPrice, tradeGasLimit, approvalGasLimit]);
 
   useEffect(() => {
     handleRefreshQuote();
-  }, [account]);
+  }, [account, toAsset]);
 
   useEffect(() => {
     handleGasLimitEstimation();
   }, [approvalTx, account]);
-
-  const estimatedGasFee =
-    gasPrice &&
-    tradeGasLimit &&
-    totalTxFeeToString(
-      gasPrice,
-      bigify(tradeGasLimit).plus(approvalGasLimit ? approvalGasLimit : 0)
-    );
 
   useInterval(
     () => {
@@ -189,15 +203,15 @@ const SwapAssets = (props: Props) => {
     [expiration]
   );
 
-  // Accounts with a balance of the chosen asset
-  const filteredAccounts = fromAsset
-    ? getAccountsWithAssetBalance(accounts, fromAsset, fromAmount, baseAsset.uuid, estimatedGasFee)
-    : [];
+  const checkNetwork = (n: Network) => DEX_NETWORKS.includes(n.id);
 
   return (
     <>
       <Box mt="20px" mb="1em">
         {isDemoMode && <DemoGatewayBanner />}
+        <Box mb="15px">
+          <NetworkSelector network={selectedNetwork} filter={checkNetwork} onChange={setNetwork} />
+        </Box>
         <Box mb="15px">
           <Box>
             <Body>
@@ -228,6 +242,15 @@ const SwapAssets = (props: Props) => {
               isLoading={isCalculatingFromAmount}
               inputError={fromAmountError}
               inputMode="decimal"
+              customIcon={() =>
+                account && fromAsset?.contractAddress ? (
+                  <Box>
+                    <LinkApp href="#" mr="1" onClick={handleSwapMax}>
+                      {translateRaw('MAX')}
+                    </LinkApp>
+                  </Box>
+                ) : null
+              }
             />
           </Box>
           <AssetSelector
@@ -237,11 +260,27 @@ const SwapAssets = (props: Props) => {
             onSelect={handleFromAssetSelected}
             disabled={isCalculatingToAmount || isCalculatingFromAmount}
             searchable={true}
+            width="175px"
           />
+        </Box>
+        <Box variant="rowCenter" my="2">
+          <hr style={{ margin: 'auto 0.5rem auto 1px', width: '100%' }} />
+          <LinkApp
+            variant="barren"
+            href="#"
+            isExternal={false}
+            onClick={handleFlipAssets}
+            width="24px"
+            height="24px"
+          >
+            <Icon type="swap-flip" width="24px" height="24px" color="BLUE_BRIGHT" />
+          </LinkApp>
+          <hr style={{ margin: 'auto 1px auto 0.5rem', width: '100%' }} />
         </Box>
         <Box display="flex">
           <Box mr="1em" flex="1">
             <InputField
+              name="swap-to"
               label={translateRaw('SWAP_RECEIVE_AMOUNT')}
               value={toAmount}
               placeholder="0.00"
@@ -259,6 +298,7 @@ const SwapAssets = (props: Props) => {
             onSelect={handleToAssetSelected}
             disabled={isCalculatingToAmount || isCalculatingFromAmount}
             searchable={true}
+            width="175px"
           />
         </Box>
         <Box mb={SPACING.SM}>
@@ -302,6 +342,7 @@ const SwapAssets = (props: Props) => {
             !!toAmountError
           }
           loading={isSubmitting}
+          data-testid="confirm-swap"
         >
           {fromAsset && toAsset
             ? translate('SWAP_FOR', { $from: fromAsset.ticker, $to: toAsset.ticker })
@@ -320,17 +361,4 @@ const SwapAssets = (props: Props) => {
   );
 };
 
-const mapStateToProps = (state: AppState) => {
-  const network = selectDefaultNetwork(state) as Network;
-
-  return {
-    isDemoMode: getIsDemoMode(state),
-    baseAsset: getBaseAssetByNetwork(network)(state) as ExtendedAsset,
-    settings: getSettings(state)
-  };
-};
-
-const connector = connect(mapStateToProps);
-type Props = ConnectedProps<typeof connector> & ISwapProps;
-
-export default connector(SwapAssets);
+export default SwapAssets;

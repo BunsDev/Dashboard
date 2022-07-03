@@ -1,10 +1,8 @@
-import { useContext } from 'react';
-
-import { makePendingTxReceipt, makeTxConfigFromSignedTx } from 'helpers';
-
 import { DEFAULT_NETWORK } from '@config';
+import { makePendingTxReceipt, makeTxConfigFromSignedTx } from '@helpers';
 import { ProviderHandler } from '@services/EthService';
-import { StoreContext, useAssets, useNetworks } from '@services/Store';
+import { useAssets, useNetworks } from '@services/Store';
+import { getStoreAccounts, useSelector } from '@store';
 import { ISignedTx, ITxConfig, ITxHash, ITxReceipt, ITxType, NetworkId } from '@types';
 import { TUseStateReducerFactory } from '@utils';
 
@@ -27,7 +25,7 @@ interface State {
 const BroadcastTxConfigFactory: TUseStateReducerFactory<State> = ({ state, setState }) => {
   const { networks, getNetworkById } = useNetworks();
   const { assets } = useAssets();
-  const { accounts } = useContext(StoreContext);
+  const accounts = useSelector(getStoreAccounts);
 
   const handleNetworkChanged = (network: NetworkId) => {
     setState((prevState: State) => ({
@@ -38,9 +36,7 @@ const BroadcastTxConfigFactory: TUseStateReducerFactory<State> = ({ state, setSt
 
   const handleSendClicked = (signedTx: ISignedTx, cb: any) => {
     const { network } = state;
-    const txConfig = makeTxConfigFromSignedTx(signedTx, assets, networks, accounts, {
-      network: getNetworkById(network)
-    } as ITxConfig);
+    const txConfig = makeTxConfigFromSignedTx(signedTx, assets, networks, accounts, network);
 
     setState((prevState: State) => ({
       ...prevState,
@@ -57,7 +53,7 @@ const BroadcastTxConfigFactory: TUseStateReducerFactory<State> = ({ state, setSt
       if (!txConfig) {
         throw new Error();
       }
-      const provider = new ProviderHandler(txConfig.network);
+      const provider = new ProviderHandler(getNetworkById(txConfig.networkId));
       const response = await provider.sendRawTx(signedTx);
       const pendingTxReceipt = makePendingTxReceipt(response.hash as ITxHash)(
         ITxType.STANDARD,

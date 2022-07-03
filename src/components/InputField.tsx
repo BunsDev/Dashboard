@@ -1,4 +1,4 @@
-import React, { Component } from 'react';
+import { Component, ElementType, HTMLProps } from 'react';
 
 import { Icon } from '@mycrypto/ui';
 import styled from 'styled-components';
@@ -21,7 +21,7 @@ interface CustomInputProps {
   inputError?: string | JSX.Element;
   inputErrorBorder?: boolean;
   showEye?: boolean;
-  customIcon?: React.ReactType;
+  customIcon?: ElementType;
   height?: string;
   maxHeight?: string;
   resizable?: boolean;
@@ -113,7 +113,6 @@ const CustomIconWrapper = styled.div`
 
 const CustomIcon = styled.span`
   display: flex;
-  border-left: 1px solid ${COLORS.GREY_GEYSER};
   img {
     margin-top: 2px;
     margin-bottom: 2px;
@@ -127,14 +126,14 @@ const CustomIcon = styled.span`
 interface Props {
   name?: string;
   type?: string;
-  inputMode?: React.HTMLProps<HTMLInputElement>['inputMode'];
+  inputMode?: HTMLProps<HTMLInputElement>['inputMode'];
   label?: string | JSX.Element;
   value: string | undefined;
   inputError?: string | JSX.Element | undefined;
   inputErrorType?: InlineMessageType;
   inputErrorBorder?: boolean;
   showEye?: boolean;
-  customIcon?: React.ElementType;
+  customIcon?: ElementType;
   textarea?: boolean;
   placeholder?: string;
   height?: string;
@@ -182,7 +181,7 @@ export class InputField extends Component<Props> {
       inputMode
     } = this.props;
 
-    const IconComponent = customIcon as React.ElementType;
+    const IconComponent = customIcon as ElementType;
 
     return (
       <MainWrapper marginBottom={marginBottom}>
@@ -191,6 +190,7 @@ export class InputField extends Component<Props> {
           {textarea ? (
             <CustomTextArea
               name={name}
+              id={name}
               value={value}
               onChange={onChange}
               onBlur={onBlur}
@@ -206,6 +206,7 @@ export class InputField extends Component<Props> {
           ) : (
             <CustomInput
               name={name}
+              id={name}
               value={value}
               onChange={(e) => {
                 if (!onChange) return;
@@ -225,7 +226,7 @@ export class InputField extends Component<Props> {
               type={this.state.showPassword ? 'text' : type ? type : 'text'}
               placeholder={placeholder ? placeholder : ''}
               height={height}
-              disabled={isLoading || disabled}
+              disabled={isLoading ?? disabled}
               inputMode={inputMode}
             />
           )}

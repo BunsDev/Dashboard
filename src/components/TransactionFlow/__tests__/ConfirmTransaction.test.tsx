@@ -1,8 +1,8 @@
-import React from 'react';
+import { ComponentProps } from 'react';
 
 import { fireEvent, simpleRender } from 'test-utils';
 
-import { fAccount, fContacts, fSettings, fTxConfig } from '@fixtures';
+import { fAccount, fContacts, fNetwork, fSettings, fTxConfig } from '@fixtures';
 import { translateRaw } from '@translations';
 import { ExtendedContact } from '@types';
 import { bigify, truncate } from '@utils';
@@ -13,7 +13,7 @@ import { constructSenderFromTxConfig } from '../helpers';
 const senderContact = Object.values(fContacts)[0] as ExtendedContact;
 const recipientContact = Object.values(fContacts)[1] as ExtendedContact;
 
-const defaultProps: React.ComponentProps<typeof ConfirmTransactionUI> = {
+const defaultProps: ComponentProps<typeof ConfirmTransactionUI> = {
   settings: fSettings,
   txConfig: fTxConfig,
   onComplete: jest.fn(),
@@ -21,10 +21,11 @@ const defaultProps: React.ComponentProps<typeof ConfirmTransactionUI> = {
   baseAssetRate: 250,
   sender: constructSenderFromTxConfig(fTxConfig, [fAccount]),
   senderContact,
-  recipientContact
+  recipientContact,
+  network: fNetwork
 };
 
-function getComponent(props: React.ComponentProps<typeof ConfirmTransactionUI>) {
+function getComponent(props: ComponentProps<typeof ConfirmTransactionUI>) {
   return simpleRender(<ConfirmTransactionUI {...props} />);
 }
 
@@ -45,14 +46,16 @@ describe('ConfirmTransaction', () => {
     const { getByText, container } = getComponent(defaultProps);
     const btn = container.querySelector('.TransactionDetails > div > div > button');
     fireEvent.click(btn!);
-    expect(getByText(defaultProps.txConfig.gasLimit)).toBeDefined();
-    expect(getByText(defaultProps.txConfig.nonce)).toBeDefined();
+    expect(
+      getByText(bigify(defaultProps.txConfig.rawTransaction.gasLimit).toString())
+    ).toBeDefined();
+    expect(getByText(bigify(defaultProps.txConfig.rawTransaction.nonce).toString())).toBeDefined();
     expect(getByText(defaultProps.txConfig.senderAccount.network.name)).toBeDefined();
   });
 
   test('it displays the correct send value', async () => {
     const { getByText } = getComponent(defaultProps);
-    expect(getByText(bigify(fTxConfig.amount).toFixed(6), { exact: false })).toBeDefined();
+    expect(getByText(bigify(fTxConfig.amount).toFixed(5), { exact: false })).toBeDefined();
   });
 
   test('it calls onComplete when clicking next', async () => {

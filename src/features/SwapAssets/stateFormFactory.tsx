@@ -1,16 +1,20 @@
+import { useEffect } from 'react';
+
+import { formatUnits } from '@ethersproject/units';
 import axios from 'axios';
 
-import { DEFAULT_NETWORK_TICKER, MYC_DEX_COMMISSION_RATE } from '@config';
+import { DEFAULT_ASSET_DECIMAL, MYC_DEX_COMMISSION_RATE } from '@config';
 import { checkRequiresApproval } from '@helpers';
-import { DexAsset, DexService, getGasEstimate } from '@services';
-import { selectDefaultNetwork, useSelector } from '@store';
+import { DexService } from '@services/ApiService';
+import { getGasEstimate } from '@services/ApiService/Gas';
+import { getAccountBalance } from '@services/Store/utils';
+import { getBaseAssetByNetwork, getSwapAssetsByNetwork, selectNetwork, useSelector } from '@store';
 import translate from '@translations';
-import { ISwapAsset, ITxGasLimit, Network, StoreAccount } from '@types';
+import { Asset, ISwapAsset, ITxGasLimit, Network, NetworkId, StoreAccount } from '@types';
 import {
   bigify,
   divideBNFloats,
   formatErrorEmailMarkdown,
-  generateAssetUUID,
   inputGasLimitToHex,
   multiplyBNFloats,
   TUseStateReducerFactory,
@@ -20,7 +24,7 @@ import {
 import { LAST_CHANGED_AMOUNT, SwapFormState } from './types';
 
 const swapFormInitialState = {
-  assets: [],
+  selectedNetwork: 'Ethereum',
   account: undefined,
   fromAsset: undefined,
   fromAmount: '',
@@ -34,44 +38,59 @@ const swapFormInitialState = {
 };
 
 const SwapFormFactory: TUseStateReducerFactory<SwapFormState> = ({ state, setState }) => {
-  const network = useSelector(selectDefaultNetwork) as Network;
+  const network = useSelector(selectNetwork(state.selectedNetwork)) as Network;
+  const baseAsset = useSelector(getBaseAssetByNetwork(network));
+  const assets = useSelector(getSwapAssetsByNetwork(state.selectedNetwork));
+  const sortedAssets = assets.sort((asset1, asset2) => asset1.ticker.localeCompare(asset2.ticker));
 
-  const fetchSwapAssets = async () => {
-    try {
-      const assets = await DexService.instance.getTokenList();
-      if (assets.length < 1) return;
-      // sort assets alphabetically
-      const newAssets = assets
-        .map(
-          ({ symbol, decimals, ...asset }: DexAsset): ISwapAsset => ({
-            ...asset,
-            ticker: symbol,
-            decimal: decimals,
-            uuid:
-              symbol === DEFAULT_NETWORK_TICKER
-                ? generateAssetUUID(network.chainId)
-                : generateAssetUUID(network.chainId, asset.address)
-          })
-        )
-        .sort((asset1: ISwapAsset, asset2: ISwapAsset) =>
-          (asset1.ticker as string).localeCompare(asset2.ticker)
-        );
-      // set fromAsset to default (ETH)
-      const fromAsset = newAssets.find((x: ISwapAsset) => x.ticker === network.baseUnit);
-      const toAsset = newAssets[0];
-      return [newAssets, fromAsset, toAsset];
-    } catch (e) {
-      console.error(e);
-    }
-  };
-
-  const setSwapAssets = (assets: ISwapAsset[], fromAsset: ISwapAsset, toAsset: ISwapAsset) => {
+  useEffect(() => {
     setState((prevState: SwapFormState) => ({
       ...prevState,
-      assets,
-      fromAsset,
-      toAsset
+      fromAsset: baseAsset,
+      toAsset: sortedAssets.filter((a) => a.uuid !== baseAsset.uuid)[0]
     }));
+  }, [assets.length, network]);
+
+  const setNetwork = (network: NetworkId) => {
+    setState((prevState: SwapFormState) => ({
+      ...prevState,
+      selectedNetwork: network,
+      fromAmount: '',
+      fromAmountError: '',
+      toAmount: '',
+      toAmountError: ''
+    }));
+  };
+
+  const handleFlipAssets = () => {
+    setState((prevState: SwapFormState) => ({
+      ...prevState,
+      fromAsset: prevState.toAsset,
+      toAsset: prevState.fromAsset,
+      fromAmount: prevState.toAmount,
+      toAmount: prevState.fromAmount,
+      fromAmountError: '',
+      toAmountError: '',
+      lastChangedAmount:
+        prevState.lastChangedAmount === LAST_CHANGED_AMOUNT.FROM
+          ? LAST_CHANGED_AMOUNT.TO
+          : LAST_CHANGED_AMOUNT.FROM
+    }));
+  };
+
+  const handleSwapMax = async () => {
+    const asset = state.fromAsset;
+    const balance = getAccountBalance(state.account, asset as Asset);
+    const fromAmount = formatUnits(balance, asset.decimal ?? DEFAULT_ASSET_DECIMAL);
+
+    setState((prevState: SwapFormState) => ({
+      ...prevState,
+      fromAmount,
+      fromAmountError: '',
+      toAmountError: '',
+      lastChangedAmount: LAST_CHANGED_AMOUNT.FROM
+    }));
+    await calculateNewToAmount(fromAmount);
   };
 
   const handleFromAssetSelected = (fromAsset: ISwapAsset) => {
@@ -128,7 +147,8 @@ const SwapFormFactory: TUseStateReducerFactory<SwapFormState> = ({ state, setSta
       }));
 
       const { price, sellAmount, ...rest } = await DexService.instance.getOrderDetailsTo(
-        account?.address,
+        network,
+        account,
         fromAsset,
         toAsset,
         value
@@ -197,7 +217,8 @@ const SwapFormFactory: TUseStateReducerFactory<SwapFormState> = ({ state, setSta
       }));
 
       const { price, buyAmount, ...rest } = await DexService.instance.getOrderDetailsFrom(
-        account?.address,
+        network,
+        account,
         fromAsset,
         toAsset,
         value
@@ -274,8 +295,10 @@ const SwapFormFactory: TUseStateReducerFactory<SwapFormState> = ({ state, setSta
           approvalTx &&
           (await checkRequiresApproval(network, approvalTx.to!, account.address, approvalTx.data!));
 
+        const { txType, ...tx } = approvalTx;
+
         const approvalGasLimit = inputGasLimitToHex(
-          requiresApproval ? await getGasEstimate(network, approvalTx!) : '0'
+          requiresApproval ? await getGasEstimate(network, tx!) : '0'
         ) as ITxGasLimit;
 
         setState((prevState: SwapFormState) => ({
@@ -306,8 +329,7 @@ const SwapFormFactory: TUseStateReducerFactory<SwapFormState> = ({ state, setSta
   };
 
   return {
-    fetchSwapAssets,
-    setSwapAssets,
+    setNetwork,
     handleFromAssetSelected,
     handleToAssetSelected,
     calculateNewFromAmount,
@@ -317,7 +339,9 @@ const SwapFormFactory: TUseStateReducerFactory<SwapFormState> = ({ state, setSta
     handleAccountSelected,
     handleGasLimitEstimation,
     handleRefreshQuote,
-    formState: state
+    handleFlipAssets,
+    handleSwapMax,
+    formState: { ...state, assets: sortedAssets }
   };
 };
 

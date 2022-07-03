@@ -8,7 +8,6 @@ import { IS_DEV } from '@utils/environment';
 export const FEATURE_FLAGS = {
   DASHBOARD: 'core',
   BUY: 'core',
-  SCREEN_LOCK: 'core',
   SETTINGS: 'core',
   TX_HISTORY: 'core',
   MYC_MEMBERSHIP: 'core',
@@ -37,10 +36,6 @@ export const FEATURE_FLAGS = {
   PRIVATE_TAGS: true,
   PROTECT_TX: true,
   ENS: true,
-  REP_TOKEN_MIGRATION: true,
-  AAVE_TOKEN_MIGRATION: true,
-  ANT_TOKEN_MIGRATION: true,
-  GOLEM_TOKEN_MIGRATION: true,
   CUSTOM_NETWORKS: IS_DEV,
   FAUCET: true
 };

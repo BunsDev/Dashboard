@@ -1,5 +1,3 @@
-import React from 'react';
-
 import styled from 'styled-components';
 
 import { Box, Icon, LinkApp, Text, TIcon } from '@components';
@@ -83,10 +81,10 @@ const ProductLink = ({
 );
 
 export const LinkSet = ({ isMobile }: { isMobile: boolean }) => {
-  const { track } = useAnalytics();
+  const { trackLink } = useAnalytics();
 
   const handleClick = (item: { link: string }) => {
-    track({ name: 'Link clicked', params: { url: item.link } });
+    trackLink({ url: item.link });
   };
 
   return (

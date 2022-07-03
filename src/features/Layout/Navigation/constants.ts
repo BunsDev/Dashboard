@@ -67,24 +67,10 @@ export const toolsTray = (APP_ROUTES: IAppRoutes) => {
       },
       {
         type: 'internal',
-        title: translateRaw('NAVIGATION_VERIFY_MESSAGE'),
-        to: APP_ROUTES.VERIFY_MESSAGE.path,
-        enabled: APP_ROUTES.VERIFY_MESSAGE.enabled,
-        icon: 'nav-verify-message'
-      },
-      {
-        type: 'internal',
-        title: translateRaw('NAVIGATION_INTERACT_WITH_CONTRACTS'),
+        title: translateRaw('NAVIGATION_CONTRACTS'),
         to: APP_ROUTES.INTERACT_WITH_CONTRACTS.path,
         enabled: APP_ROUTES.INTERACT_WITH_CONTRACTS.enabled,
         icon: 'nav-interact-with-contracts'
-      },
-      {
-        type: 'internal',
-        title: translateRaw('NAVIGATION_DEPLOY_CONTRACTS'),
-        to: APP_ROUTES.DEPLOY_CONTRACTS.path,
-        enabled: APP_ROUTES.DEPLOY_CONTRACTS.enabled,
-        icon: 'nav-deploy-contracts'
       },
       {
         type: 'internal',
@@ -109,31 +95,10 @@ export const toolsTray = (APP_ROUTES: IAppRoutes) => {
       },
       {
         type: 'internal',
-        to: APP_ROUTES.REP_TOKEN_MIGRATION.path,
-        enabled: APP_ROUTES.REP_TOKEN_MIGRATION.enabled,
-        title: translateRaw('NAVIGATION_MIGRATE_REP'),
-        icon: 'nav-migrate-rep'
-      },
-      {
-        type: 'internal',
-        to: APP_ROUTES.GOLEM_TOKEN_MIGRATION.path,
-        enabled: APP_ROUTES.GOLEM_TOKEN_MIGRATION.enabled,
-        title: translateRaw('NAVIGATION_MIGRATE_GNT'),
-        icon: 'nav-migrate-gnt'
-      },
-      {
-        type: 'internal',
-        to: APP_ROUTES.ANT_TOKEN_MIGRATION.path,
-        enabled: APP_ROUTES.ANT_TOKEN_MIGRATION.enabled,
-        title: translateRaw('NAVIGATION_MIGRATE_ANT'),
-        icon: 'nav-migrate-ant'
-      },
-      {
-        type: 'internal',
-        to: APP_ROUTES.AAVE_TOKEN_MIGRATION.path,
-        enabled: APP_ROUTES.AAVE_TOKEN_MIGRATION.enabled,
-        title: translateRaw('NAVIGATION_MIGRATE_LEND'),
-        icon: 'nav-migrate-lend'
+        to: APP_ROUTES.TOKEN_MIGRATION.path,
+        enabled: APP_ROUTES.TOKEN_MIGRATION.enabled,
+        title: translateRaw('NAVIGATION_MIGRATE'),
+        icon: 'nav-migrate'
       },
       {
         type: 'internal',
@@ -141,6 +106,13 @@ export const toolsTray = (APP_ROUTES: IAppRoutes) => {
         enabled: APP_ROUTES.FAUCET.enabled,
         title: translateRaw('NAVIGATION_FAUCET'),
         icon: 'nav-faucet'
+      },
+      {
+        type: 'internal',
+        to: APP_ROUTES.NFT_DASHBOARD.path,
+        enabled: APP_ROUTES.NFT_DASHBOARD.enabled,
+        title: translateRaw('NFT_DASHBOARD'),
+        icon: 'nav-nft'
       }
     ]
   };
@@ -167,9 +139,9 @@ export const supportUsTray: INavTray = {
     },
     {
       type: 'external',
-      title: translateRaw('NAVIGATION_GET_QUIKNODE'),
-      link: EXT_URLS.QUIKNODE_REFERRAL.url,
-      icon: 'nav-quiknode'
+      title: translateRaw('NAVIGATION_GET_QUICKNODE'),
+      link: EXT_URLS.QUICKNODE_REFERRAL.url,
+      icon: 'nav-quicknode'
     },
     {
       type: 'external',
@@ -264,24 +236,10 @@ export const mobileLinks = (APP_ROUTES: IAppRoutes) => {
         },
         {
           type: 'internal',
-          title: translateRaw('NAVIGATION_VERIFY_MESSAGE'),
-          to: APP_ROUTES.VERIFY_MESSAGE.path,
-          enabled: APP_ROUTES.VERIFY_MESSAGE.enabled,
-          icon: 'nav-verify-message'
-        },
-        {
-          type: 'internal',
-          title: translateRaw('NAVIGATION_INTERACT_WITH_CONTRACTS'),
+          title: translateRaw('NAVIGATION_CONTRACTS'),
           to: APP_ROUTES.INTERACT_WITH_CONTRACTS.path,
           enabled: APP_ROUTES.INTERACT_WITH_CONTRACTS.enabled,
           icon: 'nav-interact-with-contracts'
-        },
-        {
-          type: 'internal',
-          title: translateRaw('NAVIGATION_DEPLOY_CONTRACTS'),
-          to: APP_ROUTES.DEPLOY_CONTRACTS.path,
-          enabled: APP_ROUTES.DEPLOY_CONTRACTS.enabled,
-          icon: 'nav-deploy-contracts'
         },
         {
           type: 'internal',
@@ -306,31 +264,10 @@ export const mobileLinks = (APP_ROUTES: IAppRoutes) => {
         },
         {
           type: 'internal',
-          to: APP_ROUTES.REP_TOKEN_MIGRATION.path,
-          enabled: APP_ROUTES.REP_TOKEN_MIGRATION.enabled,
-          title: translateRaw('NAVIGATION_MIGRATE_REP'),
-          icon: 'nav-migrate-rep'
-        },
-        {
-          type: 'internal',
-          to: APP_ROUTES.GOLEM_TOKEN_MIGRATION.path,
-          enabled: APP_ROUTES.GOLEM_TOKEN_MIGRATION.enabled,
-          title: translateRaw('NAVIGATION_MIGRATE_GNT'),
-          icon: 'nav-migrate-gnt'
-        },
-        {
-          type: 'internal',
-          to: APP_ROUTES.ANT_TOKEN_MIGRATION.path,
-          enabled: APP_ROUTES.ANT_TOKEN_MIGRATION.enabled,
-          title: translateRaw('NAVIGATION_MIGRATE_ANT'),
-          icon: 'nav-migrate-ant'
-        },
-        {
-          type: 'internal',
-          to: APP_ROUTES.AAVE_TOKEN_MIGRATION.path,
-          enabled: APP_ROUTES.AAVE_TOKEN_MIGRATION.enabled,
-          title: translateRaw('NAVIGATION_MIGRATE_LEND'),
-          icon: 'nav-migrate-lend'
+          to: APP_ROUTES.TOKEN_MIGRATION.path,
+          enabled: APP_ROUTES.TOKEN_MIGRATION.enabled,
+          title: translateRaw('NAVIGATION_MIGRATE'),
+          icon: 'nav-migrate'
         },
         {
           type: 'internal',
@@ -338,6 +275,13 @@ export const mobileLinks = (APP_ROUTES: IAppRoutes) => {
           enabled: APP_ROUTES.FAUCET.enabled,
           title: translateRaw('NAVIGATION_FAUCET'),
           icon: 'nav-faucet'
+        },
+        {
+          type: 'internal',
+          to: APP_ROUTES.NFT_DASHBOARD.path,
+          enabled: APP_ROUTES.NFT_DASHBOARD.enabled,
+          title: translateRaw('NFT_DASHBOARD'),
+          icon: 'nav-nft'
         }
       ]
     },
@@ -362,8 +306,8 @@ export const socialLinks = [
     icon: 'nav-facebook'
   },
   {
-    link: 'https://medium.com/@mycrypto',
-    icon: 'nav-medium'
+    link: 'https://instagram.com/mycryptohq',
+    icon: 'nav-instagram'
   },
   {
     link: 'https://www.linkedin.com/company/mycrypto',
@@ -385,6 +329,11 @@ export const socialLinks = [
 
 export const MYCLinks = [
   {
+    title: translateRaw('NEW_FOOTER_TEXT_11'),
+    link: 'https://blog.mycrypto.com/',
+    icon: 'nav-blog'
+  },
+  {
     title: translateRaw('NEW_FOOTER_TEXT_8'),
     link: 'https://mycrypto.com/about',
     icon: 'nav-team'
@@ -398,6 +347,11 @@ export const MYCLinks = [
     title: translateRaw('NEW_FOOTER_TEXT_10'),
     link: 'https://mycrypto.com/privacy/',
     icon: 'nav-privacy'
+  },
+  {
+    title: translateRaw('NAVIGATION_DISCLAIMER'),
+    link: 'https://mycrypto.com/disclaimer',
+    icon: 'nav-disclaimer'
   }
 ];
 

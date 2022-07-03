@@ -1,15 +1,14 @@
-import React from 'react';
+import { ComponentProps } from 'react';
 
 import { simpleRender } from 'test-utils';
 
 import { MEMBERSHIP_CONFIG, stepsContent } from '@features/PurchaseMembership/config';
-import { fAccount, fAccounts, fTxParcels } from '@fixtures';
-import { StoreContext } from '@services';
+import { fAccount, fTxParcels } from '@fixtures';
 import { noOp } from '@utils';
 
 import ConfirmMembershipPurchase from './ConfirmMembershipPurchaseMultiTx';
 
-const defaultProps: React.ComponentProps<typeof ConfirmMembershipPurchase> = {
+const defaultProps: ComponentProps<typeof ConfirmMembershipPurchase> = {
   transactions: fTxParcels,
   currentTxIdx: 0,
   account: fAccount,
@@ -17,18 +16,8 @@ const defaultProps: React.ComponentProps<typeof ConfirmMembershipPurchase> = {
   onComplete: noOp
 };
 
-function getComponent(props: React.ComponentProps<typeof ConfirmMembershipPurchase>) {
-  return simpleRender(
-    <StoreContext.Provider
-      value={
-        ({
-          accounts: fAccounts
-        } as any) as any
-      }
-    >
-      <ConfirmMembershipPurchase {...props} />
-    </StoreContext.Provider>
-  );
+function getComponent(props: ComponentProps<typeof ConfirmMembershipPurchase>) {
+  return simpleRender(<ConfirmMembershipPurchase {...props} />);
 }
 
 describe('ConfirmMembershipPurchaseMultiTx', () => {

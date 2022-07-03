@@ -1,11 +1,11 @@
 import { IRates } from '@types';
 
 import { default as ApiService } from '../ApiService';
-import { COINGECKO_RATES_API } from './constants';
+import { COINGECKO_BASE_URL } from './constants';
 
 export const RatesService = () => {
   const service = ApiService.generateInstance({
-    baseURL: COINGECKO_RATES_API,
+    baseURL: COINGECKO_BASE_URL,
     timeout: 20000
   });
 
@@ -14,8 +14,12 @@ export const RatesService = () => {
     currencies: string[]
   ): Promise<IRates> => {
     return service
-      .get('/', {
-        params: { ids: coinGeckoIds.join(','), vs_currencies: currencies.join(',') }
+      .get('/simple/price', {
+        params: {
+          ids: coinGeckoIds.join(','),
+          vs_currencies: currencies.join(','),
+          include_24hr_change: true
+        }
       })
       .then((res) => res.data)
       .catch((err) => {

@@ -1,4 +1,4 @@
-import React, { useContext, useEffect, useState } from 'react';
+import { useEffect, useState } from 'react';
 
 import { RouteComponentProps, withRouter } from 'react-router-dom';
 
@@ -6,11 +6,11 @@ import { ExtendedContentPanel, WALLET_STEPS } from '@components';
 import { ROUTE_PATHS } from '@config';
 import { appendSender } from '@helpers';
 import { useTxMulti } from '@hooks';
-import { StoreContext } from '@services';
+import { getDefaultAccount } from '@store/account.slice';
+import { useSelector } from '@store/selectors';
 import { translateRaw } from '@translations';
 import { ITxHash, ITxSigned, ITxStatus, TxParcel } from '@types';
 import { bigify, useStateReducer } from '@utils';
-import { useEffectOnce, usePromise } from '@vendor';
 
 import { ConfirmSwap, ConfirmSwapMultiTx, SwapAssets, SwapTransactionReceipt } from './components';
 import { SwapFormFactory, swapFormInitialState } from './stateFormFactory';
@@ -26,11 +26,9 @@ interface TStep {
 }
 
 const SwapAssetsFlow = (props: RouteComponentProps) => {
-  const { getDefaultAccount } = useContext(StoreContext);
-  const defaultAccount = getDefaultAccount();
+  const defaultAccount = useSelector(getDefaultAccount());
   const {
-    fetchSwapAssets,
-    setSwapAssets,
+    setNetwork,
     handleFromAssetSelected,
     handleToAssetSelected,
     calculateNewFromAmount,
@@ -40,6 +38,8 @@ const SwapAssetsFlow = (props: RouteComponentProps) => {
     handleAccountSelected,
     handleGasLimitEstimation,
     handleRefreshQuote,
+    handleFlipAssets,
+    handleSwapMax,
     formState
   } = useStateReducer(SwapFormFactory, { ...swapFormInitialState, account: defaultAccount });
   const {
@@ -61,7 +61,9 @@ const SwapAssetsFlow = (props: RouteComponentProps) => {
     expiration,
     approvalTx,
     isEstimatingGas,
-    tradeTx
+    tradeTx,
+    selectedNetwork,
+    gas
   }: SwapFormState = formState;
 
   const [assetPair, setAssetPair] = useState({});
@@ -109,7 +111,9 @@ const SwapAssetsFlow = (props: RouteComponentProps) => {
         expiration,
         approvalTx,
         isEstimatingGas,
-        isSubmitting
+        isSubmitting,
+        selectedNetwork,
+        gas
       },
       actions: {
         handleFromAssetSelected,
@@ -121,6 +125,9 @@ const SwapAssetsFlow = (props: RouteComponentProps) => {
         handleAccountSelected,
         handleGasLimitEstimation,
         handleRefreshQuote,
+        handleFlipAssets,
+        handleSwapMax,
+        setNetwork,
         onSuccess: () => {
           const pair: IAssetPair = {
             fromAsset,
@@ -133,7 +140,9 @@ const SwapAssetsFlow = (props: RouteComponentProps) => {
           initWith(
             () =>
               Promise.resolve(
-                (approvalTx ? [approvalTx, tradeTx] : [tradeTx]).map(appendSender(account.address))
+                (approvalTx ? [approvalTx, tradeTx!] : [tradeTx!]).map(
+                  appendSender(account.address)
+                )
               ),
             account,
             account.network
@@ -152,7 +161,8 @@ const SwapAssetsFlow = (props: RouteComponentProps) => {
           account,
           isSubmitting,
           transactions,
-          currentTxIdx: idx
+          currentTxIdx: idx,
+          error: txError?.reason ?? txError?.message
         },
         actions: {
           onComplete: () => {
@@ -206,14 +216,6 @@ const SwapAssetsFlow = (props: RouteComponentProps) => {
     }
     stopYield();
   }, [canYield]);
-
-  const mounted = usePromise();
-  useEffectOnce(() => {
-    (async () => {
-      const [fetchedAssets, fetchedFromAsset, fetchedToAsset] = await mounted(fetchSwapAssets());
-      setSwapAssets(fetchedAssets, fetchedFromAsset, fetchedToAsset);
-    })();
-  });
 
   return (
     <ExtendedContentPanel

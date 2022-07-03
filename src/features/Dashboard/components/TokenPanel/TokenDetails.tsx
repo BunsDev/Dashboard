@@ -1,10 +1,9 @@
-import React, { useContext } from 'react';
-
 import styled from 'styled-components';
 
 import { AssetIcon, Box, Currency, DashboardPanel, Icon, LinkApp } from '@components';
 import { getFiat } from '@config/fiats';
-import { getNetworkById, StoreContext, useSettings } from '@services/Store';
+import { getNetworkById, useSettings } from '@services/Store';
+import { selectNetworks, useSelector } from '@store';
 import { COLORS, FONT_SIZE, SPACING } from '@theme';
 import { translateRaw } from '@translations';
 import { Social, StoreAsset, TAddress } from '@types';
@@ -113,7 +112,7 @@ export function TokenDetails(props: Props) {
   const {
     website,
     whitepaper,
-    social,
+    social = {},
     networkId,
     rate = 0,
     balance,
@@ -121,14 +120,14 @@ export function TokenDetails(props: Props) {
     ticker,
     contractAddress
   } = currentToken;
-  const { networks } = useContext(StoreContext);
+  const networks = useSelector(selectNetworks);
   const { settings } = useSettings();
   const network = getNetworkById(networkId, networks);
 
   const contractUrl = buildTokenUrl(network.blockExplorer, contractAddress as TAddress);
 
   // Find available supported social links
-  const filteredSocial = Object.keys(social || {}).filter((key: Social) =>
+  const filteredSocial = Object.keys(social).filter((key: Social) =>
     Object.prototype.hasOwnProperty.call(supportedSocialNetworks, key)
   );
 
@@ -200,7 +199,7 @@ export function TokenDetails(props: Props) {
               {social &&
                 filteredSocial.map((s: Social) => (
                   <LinkApp key={s} href={social[s] as string} isExternal={true} variant="barren">
-                    <SIcon alt={s} type={supportedSocialNetworks[s]} />
+                    <SIcon alt={s} type={supportedSocialNetworks[s]} color="BLUE_DARK_SLATE" />
                   </LinkApp>
                 ))}
             </InfoValue>

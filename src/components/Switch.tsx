@@ -1,5 +1,3 @@
-import React from 'react';
-
 import styled from 'styled-components';
 
 import { Box, Input, Text } from '@components';
@@ -7,6 +5,7 @@ import { Box, Input, Text } from '@components';
 const LabelText = styled(Text)`
   color: ${(props) => props.theme.text};
   cursor: pointer;
+  font-weight: 400;
 `;
 const Checkbox = styled(Input)<{
   $greyable?: boolean;
@@ -57,28 +56,30 @@ const Slider = styled.span<{ $greyable?: boolean; checked?: boolean }>`
 `;
 
 interface Props {
+  id: string;
   $greyable?: boolean;
   labelLeft?: string;
   labelRight?: string;
   checked?: boolean;
   onChange?(): void;
 }
-export const Switch = ({ $greyable, onChange, labelLeft, labelRight, checked }: Props) => (
+export const Switch = ({ $greyable, onChange, labelLeft, labelRight, checked, id }: Props) => (
   <Box variant="rowCenter">
-    <LabelText as="label" htmlFor="toggle">
+    <LabelText as="label" htmlFor={id}>
       {labelLeft}
     </LabelText>
-    <SliderBackground htmlFor="toggle">
+    <SliderBackground htmlFor={id}>
       <Checkbox
         $greyable={$greyable}
-        id="toggle"
+        id={id}
         type="checkbox"
         onChange={onChange}
         checked={checked}
+        data-testid="switch-checkbox"
       />
       <Slider checked={checked} $greyable={$greyable} />
     </SliderBackground>
-    <LabelText as="label" htmlFor="toggle">
+    <LabelText as="label" htmlFor={id}>
       {labelRight}
     </LabelText>
   </Box>

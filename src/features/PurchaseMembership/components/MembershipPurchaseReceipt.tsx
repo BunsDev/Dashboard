@@ -1,9 +1,7 @@
-import React from 'react';
-
 import { MultiTxReceipt, TxReceipt } from '@components/TransactionFlow';
 import { getFiat } from '@config/fiats';
-import { makeTxItem } from '@helpers';
-import { useAssets, useRates, useSettings } from '@services';
+import { makeTxConfigFromTx, makeTxItem } from '@helpers';
+import { useAssets, useNetworks, useRates, useSettings } from '@services';
 import { ITxType, StoreAccount, TxParcel } from '@types';
 
 import { IMembershipConfig, stepsContent } from '../config';
@@ -21,19 +19,25 @@ export default function MembershipReceipt({
   account,
   transactions,
   flowConfig,
-  onComplete
+  onComplete,
+  ...props
 }: IMembershipPurchaseReceiptProps) {
-  const { getAssetByUUID } = useAssets();
+  const { getAssetByUUID, assets } = useAssets();
   const { settings } = useSettings();
   const { getAssetRate } = useRates();
+  const { getNetworkById } = useNetworks();
 
-  const txItems = transactions.map((tx, idx) => {
-    const txConfig = makePurchaseMembershipTxConfig(tx.txRaw, account, flowConfig);
-    const txType = idx === transactions.length - 1 ? ITxType.PURCHASE_MEMBERSHIP : ITxType.APPROVAL;
-    return makeTxItem(txType, txConfig, tx.txHash!, tx.txReceipt);
+  const txItems = transactions.map((tx) => {
+    const txConfig =
+      tx.txType === ITxType.PURCHASE_MEMBERSHIP
+        ? makePurchaseMembershipTxConfig(tx.txRaw, account, flowConfig)
+        : makeTxConfigFromTx(tx.txRaw, assets, account.network, [account]);
+    return makeTxItem(tx.txType!, txConfig, tx.txHash!, tx.txReceipt);
   });
 
-  const baseAsset = getAssetByUUID(txItems[0].txConfig.network.baseAsset)!;
+  const network = getNetworkById(txItems[0].txConfig.networkId);
+
+  const baseAsset = getAssetByUUID(network.baseAsset)!;
 
   const baseAssetRate = getAssetRate(baseAsset);
 
@@ -48,6 +52,7 @@ export default function MembershipReceipt({
       customComponent={customComponent}
       resetFlow={onComplete}
       onComplete={onComplete}
+      {...props}
     />
   ) : (
     <MultiTxReceipt

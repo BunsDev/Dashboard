@@ -1,4 +1,4 @@
-import React, { FC, ReactNode } from 'react';
+import { FC, Fragment, ReactNode } from 'react';
 
 import isEmpty from 'lodash/isEmpty';
 import isFunction from 'lodash/isFunction';
@@ -73,23 +73,32 @@ export function translateRaw(key: string, variables?: { [name: string]: string }
    *  translation key with the variable's value.
    */
   if (variables) {
-    let str = translatedString.replace(/\$/g, '__');
+    try {
+      let str = translatedString.replace(/\$/g, '__');
 
-    Object.keys(variables).forEach((variable) => {
-      const singleWordVariable = variable.replace(/\$/g, '__');
-      const re = new RegExp(`\\b${singleWordVariable}\\b`, 'g');
+      Object.keys(variables).forEach((variable) => {
+        const singleWordVariable = variable.replace(/\$/g, '__');
+        const re = new RegExp(`\\b${singleWordVariable}\\b`, 'g');
 
-      str = str.replace(re, variables[variable]);
-    });
+        // Needs to escape '$' because it is a special replacement operator
+        // https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/String/replace
+        const escaped = variables[variable].replace(/\$/g, '$$$$');
 
-    return str;
+        str = str.replace(re, escaped);
+      });
+
+      return str;
+    } catch (err) {
+      console.error(err);
+      return key;
+    }
   }
   return translatedString;
 }
 
 interface Props {
   id: string;
-  variables?: { [name: string]: () => string | React.ReactNode };
+  variables?: { [name: string]: () => string | ReactNode };
 }
 
 export const Trans: FC<Props> = ({ id, variables }) => {
@@ -143,19 +152,16 @@ export const Trans: FC<Props> = ({ id, variables }) => {
 
         return resolveComponents(matchSplit[1], [
           ...components,
-          <React.Fragment key={uniqueId()}>{matchSplit[0]}</React.Fragment>,
-          <React.Fragment key={uniqueId()}>
+          <Fragment key={uniqueId()}>{matchSplit[0]}</Fragment>,
+          <Fragment key={uniqueId()}>
             {isFunction(variablesComponents[resolvedComponentIndexNumber])
               ? (variablesComponents[resolvedComponentIndexNumber] as () => any)()
               : variablesComponents[resolvedComponentIndexNumber]}
-          </React.Fragment>
+          </Fragment>
         ]);
       }
 
-      return resolveComponents('', [
-        ...components,
-        <React.Fragment key={uniqueId()}>{rest}</React.Fragment>
-      ]);
+      return resolveComponents('', [...components, <Fragment key={uniqueId()}>{rest}</Fragment>]);
     };
 
     return <>{resolveComponents(tString)}</>;

@@ -1,5 +1,3 @@
-import React from 'react';
-
 import styled from 'styled-components';
 
 import { Typography } from '@components';
@@ -20,7 +18,7 @@ const PlanCard = styled.div`
   display: flex;
   flex-direction: column;
   align-items: center;
-  width: 18%;
+  width: 24%;
   padding: ${SPACING.BASE};
   background-color: ${COLORS.WHITE};
   border-radius: 6px;
@@ -45,7 +43,7 @@ const STypography = styled(Typography)`
 
 export default ({ plan }: { plan: IMembershipConfig }) => {
   const { assets } = useAssets();
-  const planAsset = getAssetByUUID(assets)(plan.assetUUID) || ({} as Asset);
+  const planAsset = getAssetByUUID(assets)(plan.assetUUID) ?? ({} as Asset);
 
   return (
     <PlanCard>

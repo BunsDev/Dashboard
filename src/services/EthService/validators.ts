@@ -1,23 +1,26 @@
-import { BigNumber as EthersBN } from '@ethersproject/bignumber';
+import { ALL_DERIVATION_PATHS } from '@mycrypto/wallets';
 import { ResolutionError } from '@unstoppabledomains/resolution';
 import BigNumber from 'bignumber.js';
 import { toChecksumAddress } from 'ethereumjs-util';
-import { Validator } from 'jsonschema';
 import { isValidChecksumAddress as isValidChecksumRSKAddress } from 'rskjs-util';
 
 import {
   CREATION_ADDRESS,
   DEFAULT_ASSET_DECIMAL,
-  dPathRegex,
-  DPathsList as DPaths,
   GAS_LIMIT_LOWER_BOUND,
   GAS_LIMIT_UPPER_BOUND,
   GAS_PRICE_GWEI_LOWER_BOUND,
   GAS_PRICE_GWEI_UPPER_BOUND
 } from '@config';
 import translate, { translateRaw } from '@translations';
-import { InlineMessageType, JsonRPCResponse, Web3RequestPermissionsResponse } from '@types';
-import { baseToConvertedUnit, bigify, convertedToBaseUnit, gasStringsToMaxGasBN } from '@utils';
+import { InlineMessageType } from '@types';
+import {
+  bigify,
+  bigNumGasPriceToViewableGwei,
+  convertedToBaseUnit,
+  gasStringsToMaxGasBN,
+  gasStringsToMaxGasNumber
+} from '@utils';
 
 import { isValidENSName } from './ens/validators';
 
@@ -169,37 +172,34 @@ export function isValidHex(str: string): boolean {
   return re.test(str);
 }
 
+const dPathRegex = /m\/4[4,9]'\/[0-9]+'\/[0-9]+('+$|'+(\/[0-1]+$))/;
+
 export function isValidPath(dPath: string) {
-  // ETC Ledger is incorrect up due to an extra ' at the end of it
-  if (dPath === DPaths.ETC_LEDGER.value) {
-    return true;
-  }
-
-  // SingularDTV is incorrect due to using a 0 instead of a 44 as the purpose
-  if (dPath === DPaths.ETH_SINGULAR.value) {
-    return true;
-  }
-
-  // Ledger Live is incorrect due to using the full path instead of a prefix and overwriting the index.
-  if (dPath === DPaths.ETH_LEDGER_LIVE.value) {
+  if (ALL_DERIVATION_PATHS.some((d) => d.path === dPath)) {
     return true;
   }
 
   return dPathRegex.test(dPath);
 }
 
-export type TxFeeResponseType =
-  | 'Warning'
-  | 'Warning-Use-Lower'
-  | 'Error-High-Tx-Fee'
-  | 'Error-Very-High-Tx-Fee'
-  | 'None'
-  | 'Invalid';
+export enum TxFeeResponseType {
+  'Warning',
+  'WarningUseLower',
+  'ErrorHighTxFee',
+  'ErrorVeryHighTxFee',
+  'WarningHighBaseFee',
+  'WarningVeryHighBaseFee',
+  'None',
+  'Invalid'
+}
 interface TxFeeResponse {
   type: TxFeeResponseType;
   amount?: string;
   fee?: string;
 }
+
+const HIGH_BASE_FEE = 100;
+const VERY_HIGH_BASE_FEE = 200;
 
 export const validateTxFee = (
   amount: string,
@@ -208,88 +208,68 @@ export const validateTxFee = (
   isERC20: boolean,
   gasLimit: string,
   gasPrice: string,
-  ethAssetRate?: number
+  ethAssetRate?: number,
+  baseFee?: BigNumber
 ): TxFeeResponse => {
+  const humanReadableBaseFee = baseFee && bigify(bigNumGasPriceToViewableGwei(baseFee));
+
+  if (humanReadableBaseFee && humanReadableBaseFee.gt(VERY_HIGH_BASE_FEE)) {
+    return { type: TxFeeResponseType.WarningVeryHighBaseFee };
+  } else if (humanReadableBaseFee && humanReadableBaseFee.gt(HIGH_BASE_FEE)) {
+    return { type: TxFeeResponseType.WarningHighBaseFee };
+  }
+
   const validInputRegex = /^[0-9]+(\.[0-9])?[0-9]*$/;
   if (
     !amount.match(validInputRegex) ||
     !gasLimit.match(validInputRegex) ||
     !gasPrice.match(validInputRegex)
   ) {
-    return { type: 'Invalid' };
+    return { type: TxFeeResponseType.Invalid };
   }
-  const DEFAULT_RATE_DECIMAL = 4;
-  const DEFAULT_DECIMAL = DEFAULT_ASSET_DECIMAL + DEFAULT_RATE_DECIMAL;
-  const getAssetRate = () => convertedToBaseUnit(assetRateUSD.toString(), DEFAULT_RATE_DECIMAL);
-  const getAssetRateLocal = () =>
-    convertedToBaseUnit(assetRateFiat.toString(), DEFAULT_RATE_DECIMAL);
-  const getEthAssetRate = () =>
-    ethAssetRate ? convertedToBaseUnit(assetRateUSD.toString(), DEFAULT_RATE_DECIMAL) : 0;
 
-  const txAmount = EthersBN.from(convertedToBaseUnit(amount, DEFAULT_DECIMAL));
-  const txFee = EthersBN.from(gasStringsToMaxGasBN(gasPrice, gasLimit).toString());
-  const txFeeFiatValue = EthersBN.from(getAssetRate()).mul(txFee);
-
-  const txTransactionFeeInEthFiatValue =
-    ethAssetRate && ethAssetRate > 0 ? EthersBN.from(getEthAssetRate()).mul(txFee) : null;
+  const txAmount = bigify(amount);
+  const txFee = gasStringsToMaxGasNumber(gasPrice, gasLimit);
+  const txFeeFiatValue = bigify(assetRateUSD).multipliedBy(txFee);
 
   const createTxFeeResponse = (type: TxFeeResponseType) => {
-    const txAmountFiatLocalValue = EthersBN.from(getAssetRateLocal()).mul(txAmount);
-    const txFeeFiatLocalValue = EthersBN.from(getAssetRateLocal()).mul(txFee);
+    const txAmountFiatLocalValue = bigify(assetRateFiat).multipliedBy(txAmount);
+    const txFeeFiatLocalValue = bigify(assetRateFiat).multipliedBy(txFee);
     return {
       type,
-      amount: bigify(
-        baseToConvertedUnit(
-          txAmountFiatLocalValue.toString(),
-          DEFAULT_DECIMAL + DEFAULT_RATE_DECIMAL
-        )
-      ).toFixed(4),
-      fee: bigify(baseToConvertedUnit(txFeeFiatLocalValue.toString(), DEFAULT_DECIMAL)).toFixed(4)
+      amount: txAmountFiatLocalValue.toFixed(4),
+      fee: txFeeFiatLocalValue.toFixed(4)
     };
   };
-  const isGreaterThanEthFraction = (ethFraction: number) => {
-    if (ethAssetRate && txTransactionFeeInEthFiatValue) {
-      return txTransactionFeeInEthFiatValue.gte(
-        convertedToBaseUnit((ethAssetRate * ethFraction).toString(), DEFAULT_DECIMAL)
-      );
-    }
-    return false;
-  };
+  const isGreaterThanEthFraction = (ethFraction: number) =>
+    ethAssetRate && txFeeFiatValue.gt(ethAssetRate * ethFraction);
 
   // In case of fractions of amount being send
-  if (txAmount.lt(EthersBN.from(convertedToBaseUnit('0.000001', DEFAULT_DECIMAL)))) {
-    return createTxFeeResponse('None');
+  if (txAmount.lt(0.000001)) {
+    return createTxFeeResponse(TxFeeResponseType.None);
   }
 
   // More than 100$ OR 0.5 ETH
-  if (
-    txFeeFiatValue.gt(EthersBN.from(convertedToBaseUnit('100', DEFAULT_DECIMAL))) ||
-    isGreaterThanEthFraction(0.5)
-  ) {
-    return createTxFeeResponse('Error-Very-High-Tx-Fee');
+  if (txFeeFiatValue.gt(100) || isGreaterThanEthFraction(0.5)) {
+    return createTxFeeResponse(TxFeeResponseType.ErrorVeryHighTxFee);
   }
 
   // More than 25$ OR 0.15 ETH
-  if (
-    txFeeFiatValue.gt(EthersBN.from(convertedToBaseUnit('25', DEFAULT_DECIMAL))) ||
-    isGreaterThanEthFraction(0.15)
-  ) {
-    return createTxFeeResponse('Error-High-Tx-Fee');
+  if (txFeeFiatValue.gt(25) || isGreaterThanEthFraction(0.15)) {
+    return createTxFeeResponse(TxFeeResponseType.ErrorHighTxFee);
   }
 
   // More than 15$ for ERC20 or 10$ for ETH
-  if (
-    txFeeFiatValue.gt(EthersBN.from(convertedToBaseUnit(isERC20 ? '15' : '10', DEFAULT_DECIMAL)))
-  ) {
-    return createTxFeeResponse('Warning-Use-Lower');
+  if (txFeeFiatValue.gt(isERC20 ? 15 : 10)) {
+    return createTxFeeResponse(TxFeeResponseType.WarningUseLower);
   }
 
   // Erc token where txFee is higher than amount
-  if (!isERC20 && txAmount.lt(convertedToBaseUnit(txFee.toString(), DEFAULT_RATE_DECIMAL))) {
-    return createTxFeeResponse('Warning');
+  if (!isERC20 && txAmount.lt(txFee)) {
+    return createTxFeeResponse(TxFeeResponseType.Warning);
   }
 
-  return createTxFeeResponse('None');
+  return createTxFeeResponse(TxFeeResponseType.None);
 };
 
 export const isTransactionFeeHigh = (
@@ -307,16 +287,16 @@ export const isTransactionFeeHigh = (
   ) {
     return false;
   }
-  const amountBN = EthersBN.from(convertedToBaseUnit(amount, DEFAULT_ASSET_DECIMAL));
-  if (amountBN.lt(EthersBN.from(convertedToBaseUnit('0.000001', DEFAULT_ASSET_DECIMAL)))) {
+  const amountBN = bigify(convertedToBaseUnit(amount, DEFAULT_ASSET_DECIMAL));
+  if (amountBN.lt(convertedToBaseUnit('0.000001', DEFAULT_ASSET_DECIMAL))) {
     return false;
   }
-  const transactionFee = EthersBN.from(gasStringsToMaxGasBN(gasPrice, gasLimit).toString());
-  const fiatValue = EthersBN.from(assetRate.toFixed(0)).mul(transactionFee);
+  const transactionFee = bigify(gasStringsToMaxGasBN(gasPrice, gasLimit).toString());
+  const fiatValue = bigify(assetRate.toFixed(0)).multipliedBy(transactionFee);
   // For now transaction fees are too high if they are more than $10 fiat or more than the sent amount
   return (
     (!isERC20 && amountBN.lt(transactionFee)) ||
-    fiatValue.gt(EthersBN.from(convertedToBaseUnit('10', DEFAULT_ASSET_DECIMAL)))
+    fiatValue.gt(convertedToBaseUnit('10', DEFAULT_ASSET_DECIMAL))
   );
 };
 
@@ -340,91 +320,9 @@ export const gasPriceValidator = (gasPrice: BigNumber | string): boolean => {
     isValidPositiveNumber(gasPriceFloat) &&
     gasPriceFloat.gte(GAS_PRICE_GWEI_LOWER_BOUND) &&
     gasPriceFloat.lte(GAS_PRICE_GWEI_UPPER_BOUND) &&
-    getLength(gasPriceFloat) <= 10 &&
-    getLength(decimalLength) <= 6
+    getLength(decimalLength) <= 9
   );
 };
-
-// JSONSchema Validations for Rpc responses
-const v = new Validator();
-
-export const schema = {
-  RpcNode: {
-    type: 'object',
-    additionalProperties: true,
-    properties: {
-      jsonrpc: { type: 'string' },
-      id: { oneOf: [{ type: 'string' }, { type: 'integer' }] },
-      result: {
-        oneOf: [{ type: 'string' }, { type: 'array' }, { type: 'object' }]
-      },
-      status: { type: 'string' },
-      message: { type: 'string', maxLength: 2 }
-    }
-  }
-};
-
-function isValidResult(response: JsonRPCResponse, schemaFormat: typeof schema.RpcNode): boolean {
-  return v.validate(response, schemaFormat).valid;
-}
-
-function formatErrors(response: JsonRPCResponse, apiType: string) {
-  if (response.error) {
-    // Metamask errors are sometimes full-blown stacktraces, no bueno. Instead,
-    // We'll just take the first line of it, and the last thing after all of
-    // the colons. An example error message would be:
-    // "Error: Metamask Sign Tx Error: User rejected the signature."
-    const lines = response.error.message.split('\n');
-    if (lines.length > 2) {
-      return lines[0].split(':').pop();
-    } else {
-      return `${response.error.message} ${response.error.data || ''}`;
-    }
-  }
-  return `Invalid ${apiType} Error`;
-}
-
-enum API_NAME {
-  Sign_Message = 'Sign Message',
-  Get_Accounts = 'Get Accounts',
-  Request_Permissions = 'Request_Permissions',
-  Get_Permissions = 'Get_Permissions',
-  Get_ChainId = 'Get_ChainId'
-}
-
-const isValidEthServiceResponse = (
-  response: JsonRPCResponse,
-  schemaType: typeof schema.RpcNode
-) => (apiName: API_NAME, cb?: (res: JsonRPCResponse) => any) => {
-  if (!isValidResult(response, schemaType)) {
-    if (cb) {
-      return cb(response);
-    }
-    throw new Error(formatErrors(response, apiName));
-  }
-  return response;
-};
-
-export const isValidSignMessage = (response: JsonRPCResponse) =>
-  isValidEthServiceResponse(response, schema.RpcNode)(API_NAME.Sign_Message);
-
-export const isValidGetAccounts = (response: JsonRPCResponse) =>
-  isValidEthServiceResponse(response, schema.RpcNode)(API_NAME.Get_Accounts);
-
-export const isValidGetChainId = (response: JsonRPCResponse) =>
-  isValidEthServiceResponse(response, schema.RpcNode)(API_NAME.Get_ChainId);
-
-export const isValidRequestPermissions = (response: Web3RequestPermissionsResponse) =>
-  isValidEthServiceResponse(
-    (response as unknown) as JsonRPCResponse,
-    schema.RpcNode
-  )(API_NAME.Request_Permissions) as Web3RequestPermissionsResponse;
-
-export const isValidGetPermissions = (response: JsonRPCResponse) =>
-  isValidEthServiceResponse(
-    response,
-    schema.RpcNode
-  )(API_NAME.Get_Permissions) as Web3RequestPermissionsResponse;
 
 export const isValidTxHash = (hash: string) =>
   hash.substring(0, 2) === '0x' && hash.length === 66 && isValidHex(hash);

@@ -1,5 +1,3 @@
-import React from 'react';
-
 import { TxReceipt } from '@components/TransactionFlow';
 import { translateRaw } from '@translations';
 import { ITxConfig, ITxReceipt } from '@types';
@@ -11,7 +9,7 @@ interface Props {
 }
 
 export default function DeployReceipt(props: Props) {
-  const { txReceipt, txConfig, goToFirstStep } = props;
+  const { txReceipt, txConfig, goToFirstStep, ...rest } = props;
 
   return (
     <TxReceipt
@@ -20,6 +18,7 @@ export default function DeployReceipt(props: Props) {
       completeButton={translateRaw('DEPLOY_ANOTHER')}
       resetFlow={goToFirstStep}
       onComplete={goToFirstStep}
+      {...rest}
     />
   );
 }

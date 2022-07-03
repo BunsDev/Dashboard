@@ -121,6 +121,9 @@ const TEXT_VARIANTS = {
   },
   discrete: {
     color: 'BLUE_GREY'
+  },
+  label: {
+    marginBottom: '0.5em'
   }
 };
 
@@ -148,6 +151,10 @@ const FLEX_RECIPES = {
   end: {
     display: 'flex',
     justifyContent: 'flex-end'
+  },
+  start: {
+    display: 'flex',
+    justifyContent: 'flex-start'
   }
 };
 
@@ -155,6 +162,11 @@ const FLEX_VARIANTS = {
   rowAlign: {
     flexDirection: 'row',
     ...FLEX_RECIPES.align
+  },
+  rowAlignTop: {
+    flexDirection: 'row',
+    ...FLEX_RECIPES.align,
+    alignItems: 'flex-start'
   },
   rowCenter: {
     flexDirection: 'row',
@@ -172,6 +184,14 @@ const FLEX_VARIANTS = {
     ...FLEX_RECIPES.spaceBetween
   },
   alignRight: {
+    ...FLEX_RECIPES.end
+  },
+  columnAlignLeft: {
+    flexDirection: 'column',
+    ...FLEX_RECIPES.start
+  },
+  columnAlignRight: {
+    flexDirection: 'column',
     ...FLEX_RECIPES.end
   }
 };

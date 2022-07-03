@@ -1,10 +1,21 @@
-import React, { useEffect, useState } from 'react';
+import { useState } from 'react';
 
+import { parse } from '@ethersproject/transactions';
+import { TAddress, Wallet } from '@mycrypto/wallets';
 import styled from 'styled-components';
 
-import { BusyBottom, Icon, InlineMessage, Text, TIcon } from '@components';
-import { WALLETS_CONFIG } from '@config';
-import { HardwareWallet, WalletFactory } from '@services/WalletService';
+import { Body, Box, BusyBottom, Heading, Icon, InlineMessage, TIcon } from '@components';
+import { TxIntermediaryDisplay } from '@components/TransactionFlow/displays';
+import { isContractInteraction } from '@components/TransactionFlow/helpers';
+import { HARDWARE_CONFIG, WALLETS_CONFIG } from '@config';
+import { WalletFactory } from '@services/WalletService';
+import {
+  connectWallet,
+  getContractName,
+  getWalletConnection,
+  useDispatch,
+  useSelector
+} from '@store';
 import { FONT_SIZE, SPACING } from '@theme';
 import translate, { translateRaw } from '@translations';
 import {
@@ -12,12 +23,13 @@ import {
   HardwareWalletId,
   HardwareWalletService,
   IAccount,
+  InlineMessageType,
   IPendingTxReceipt,
   ISignedTx,
-  ITxObject,
-  WalletId
+  ITxObject
 } from '@types';
-import { makeTransaction, useInterval } from '@utils';
+import { isSameAddress, makeTransaction, useInterval } from '@utils';
+import { useDebounce } from '@vendor';
 
 export interface IDestructuredDPath {
   dpath: string;
@@ -34,21 +46,9 @@ const SImgContainer = styled.div`
   margin: 3em;
 `;
 
-const ErrorMessageContainer = styled.div`
-  margin: 2em;
+const SInlineMessage = styled(InlineMessage)`
+  text-align: center;
 `;
-
-export const splitDPath = (fullDPath: string): IDestructuredDPath => {
-  /*
-    m/44'/60'/0'/0 => { dpath: "m/44'/60'/0'", index: "0" }
-  */
-  const dPathArray = fullDPath.split('/');
-  const index = dPathArray.pop() as string;
-  return {
-    dpath: dPathArray.join('/'),
-    index: parseInt(index, 10)
-  };
-};
 
 export interface IProps {
   walletIconType: TIcon;
@@ -56,6 +56,14 @@ export interface IProps {
   senderAccount: IAccount;
   rawTransaction: ITxObject;
   onSuccess(receipt: IPendingTxReceipt | ISignedTx): void;
+}
+
+export enum WalletSigningState {
+  SUBMITTING,
+  REJECTED,
+  SUCCESS,
+  ADDRESS_MISMATCH,
+  PENDING
 }
 
 export default function HardwareSignTransaction({
@@ -67,26 +75,28 @@ export default function HardwareSignTransaction({
 }: IProps) {
   const [isRequestingWalletUnlock, setIsRequestingWalletUnlock] = useState(false);
   const [isWalletUnlocked, setIsWalletUnlocked] = useState(false);
-  const [isRequestingTxSignature, setIsRequestingTxSignature] = useState(false);
-  const [isTxSignatureRequestDenied, setIsTxSignatureRequestDenied] = useState(false);
-  const [wallet, setWallet] = useState<HardwareWallet | undefined>();
+  const [signingState, setSigningState] = useState(WalletSigningState.PENDING);
+  const [wallet, setWallet] = useState<Wallet | undefined>();
   const SigningWalletService = WalletFactory[
     senderAccount.wallet as HardwareWalletId
   ] as HardwareWalletService;
+  const params = useSelector(getWalletConnection(senderAccount.wallet));
+  const dispatch = useDispatch();
 
   useInterval(
     async () => {
       // Unlock Wallet
       if (!isWalletUnlocked && !isRequestingWalletUnlock) {
         setIsRequestingWalletUnlock(true);
-        const dpathObject = splitDPath(senderAccount.dPath);
-        const walletObject = SigningWalletService.init({
+        const walletObject = await SigningWalletService.init({
           address: senderAccount.address,
-          dPath: dpathObject.dpath,
-          index: dpathObject.index
+          dPath: senderAccount.path!,
+          index: senderAccount.index!,
+          params
         });
+        dispatch(connectWallet(walletObject));
         try {
-          await SigningWalletService.getChainCode(dpathObject.dpath);
+          await walletObject.getAddress();
           setIsRequestingWalletUnlock(false);
           setIsWalletUnlocked(true);
           setWallet(walletObject);
@@ -100,44 +110,51 @@ export default function HardwareSignTransaction({
     []
   );
 
-  useEffect(() => {
-    // Wallet has been unlocked. Attempting to sign tx now.
-    if (wallet && 'signRawTransaction' in wallet && !isRequestingTxSignature) {
-      setIsRequestingTxSignature(true);
-      const madeTx = makeTransaction(rawTransaction);
-      wallet
-        .signRawTransaction(madeTx)
-        .then((data: any) => {
-          // User approves tx.
-          setIsTxSignatureRequestDenied(false);
-          onSuccess(data);
-        })
-        .catch(() => {
-          // User denies tx, or tx times out.
-          setIsTxSignatureRequestDenied(true);
-          setIsRequestingTxSignature(false);
-        });
-    }
-  }, [wallet, isRequestingTxSignature]);
+  useDebounce(
+    () => {
+      // Wallet has been unlocked. Attempting to sign tx now.
+      if (
+        wallet &&
+        ![WalletSigningState.SUBMITTING, WalletSigningState.SUCCESS].includes(signingState)
+      ) {
+        setSigningState(WalletSigningState.SUBMITTING);
+        const madeTx = makeTransaction(rawTransaction);
+        wallet
+          .signTransaction(madeTx)
+          .then((data) => {
+            const parsed = parse(data);
+            if (!isSameAddress(senderAccount.address, parsed.from as TAddress)) {
+              setSigningState(WalletSigningState.ADDRESS_MISMATCH);
+              return;
+            }
+            // User approves tx.
+            setSigningState(WalletSigningState.SUCCESS);
+            onSuccess(data);
+          })
+          .catch((err) => {
+            console.error(err);
+            // User denies tx, or tx times out.
+            setSigningState(WalletSigningState.REJECTED);
+          });
+      }
+    },
+    1000,
+    [wallet, signingState]
+  );
 
-  const walletType = (() => {
-    switch (senderAccount.wallet) {
-      case WalletId.TREZOR:
-      case WalletId.TREZOR_NEW:
-        return BusyBottomConfig.TREZOR;
-
-      default:
-        return BusyBottomConfig.LEDGER;
-    }
-  })();
+  const walletType = HARDWARE_CONFIG[senderAccount.wallet as HardwareWalletId].busyBottom;
+  const network = senderAccount.networkId;
+  const contractName = useSelector(getContractName(network, rawTransaction.to));
 
   return (
     <SignTxHardwareUI
       walletIconType={walletIconType}
       signerDescription={signerDescription}
-      isTxSignatureRequestDenied={isTxSignatureRequestDenied}
+      signingState={signingState}
       wallet={walletType}
       senderAccount={senderAccount}
+      rawTransaction={rawTransaction}
+      contractName={contractName}
     />
   );
 }
@@ -145,39 +162,63 @@ export default function HardwareSignTransaction({
 interface UIProps {
   walletIconType: TIcon;
   signerDescription: string;
-  isTxSignatureRequestDenied: boolean;
+  signingState: WalletSigningState;
   wallet: BusyBottomConfig;
   senderAccount: IAccount;
+  rawTransaction: ITxObject;
+  contractName?: string;
 }
 
 export const SignTxHardwareUI = ({
   walletIconType,
   signerDescription,
-  isTxSignatureRequestDenied,
+  signingState,
   wallet,
-  senderAccount
+  senderAccount,
+  rawTransaction,
+  contractName
 }: UIProps) => (
   <>
-    <Text textAlign="center" fontWeight="bold" marginTop={SPACING.LG} fontSize={FONT_SIZE.XXL}>
+    <Heading textAlign="center" fontWeight="bold" fontSize={FONT_SIZE.XXL}>
       {translate('SIGN_TX_TITLE', {
         $walletName: WALLETS_CONFIG[senderAccount.wallet].name
       })}
-    </Text>
-    <Text fontSize={FONT_SIZE.MD} marginTop={SPACING.MD}>
+    </Heading>
+    <Body fontSize={FONT_SIZE.MD} marginTop={SPACING.MD}>
       {signerDescription}
-    </Text>
+    </Body>
+    {isContractInteraction(rawTransaction.data) && rawTransaction.to && (
+      <Box mt={3}>
+        <TxIntermediaryDisplay address={rawTransaction.to} contractName={contractName} />
+      </Box>
+    )}
     <div>
       <SImgContainer>
         <Icon type={walletIconType} />
       </SImgContainer>
-      <Text textAlign="center">
-        {isTxSignatureRequestDenied && (
-          <ErrorMessageContainer>
-            <InlineMessage value={translate('SIGN_TX_HARDWARE_FAILED_1')} />
-          </ErrorMessageContainer>
+      <Box variant="columnCenter" pt={SPACING.SM}>
+        {signingState === WalletSigningState.REJECTED && (
+          <SInlineMessage value={translate('SIGN_TX_HARDWARE_FAILED_1')} />
         )}
+        {signingState === WalletSigningState.ADDRESS_MISMATCH && (
+          <SInlineMessage
+            value={translateRaw('HW_SIGN_ADDRESS_MISMATCH', { $address: senderAccount.address })}
+          />
+        )}
+        {signingState === WalletSigningState.SUBMITTING && (
+          <SInlineMessage type={InlineMessageType.INDICATOR_INFO_CIRCLE}>
+            {translate('SIGN_TX_SUBMITTING_PENDING')}
+          </SInlineMessage>
+        )}
+      </Box>
+      <Body textAlign="center" lineHeight="1.5" fontSize={FONT_SIZE.MD} marginTop="16px">
         {translateRaw('SIGN_TX_EXPLANATION')}
-      </Text>
+      </Body>
+      {wallet === BusyBottomConfig.LEDGER && (
+        <Body textAlign="center" fontWeight="bold">
+          {translateRaw('LEDGER_FIRMWARE_NOTICE')}
+        </Body>
+      )}
       <SFooter>
         <BusyBottom type={wallet} />
       </SFooter>

@@ -1,10 +1,10 @@
 import { ReactNode } from 'react';
 
 import { ActionButtonProps, TIcon } from '@components';
-import { UniClaimResult } from '@services';
 
 import { StoreAccount } from './account';
 import { StoreAsset } from './asset';
+import { ClaimResult, ClaimType } from './claims';
 import { DomainNameRecord } from './ens';
 import { TUuid } from './uuid';
 
@@ -13,6 +13,9 @@ export enum ACTION_NAME {
   MIGRATE_REP = 'migrate_rep',
   MIGRATE_ANT = 'migrate_ant',
   CLAIM_UNI = 'claim_uni',
+  CLAIM_DAPPNODE = 'claim_dappnode',
+  CLAIM_ENS = 'claim_ens',
+  CLAIM_GIV = 'claim_giv',
   RENEW_ENS = 'renew_ens',
   BUY_HW = 'buy_hw',
   MYC_MEMBERSHIP = 'myc_membership',
@@ -40,14 +43,15 @@ export enum ACTION_CATEGORIES {
 export enum ACTION_STATE {
   DEFAULT = 'default',
   NEW = 'new',
+  VIEWED = 'viewed',
   STARTED = 'started',
   COMPLETED = 'completed',
   HIDDEN = 'hidden'
 }
 
 export interface ActionFilters {
-  assets(selectedAccounts?: StoreAccount[]): StoreAsset[];
-  uniClaims: UniClaimResult[];
+  assets: StoreAsset[];
+  claims: Partial<Record<ClaimType, ClaimResult[]>>;
   ensOwnershipRecords: DomainNameRecord[];
   accounts: StoreAccount[];
   isMyCryptoMember: boolean;
@@ -62,7 +66,7 @@ export interface ActionTemplate {
   priority: number;
   Component?(props: Record<string, any>): JSX.Element;
   props?: Record<string, unknown>;
-  filter?(filters: ActionFilters): boolean;
+  filter?(filters: ActionFilters): boolean | undefined;
   time?: {
     start: Date;
     end: Date;

@@ -1,12 +1,11 @@
-import React, { useContext } from 'react';
-
 import pick from 'ramda/src/pick';
 
 import { MultiTxReceipt, TxReceipt } from '@components/TransactionFlow';
 import { SwapFromToDiagram } from '@components/TransactionFlow/displays';
 import { getFiat } from '@config/fiats';
-import { makeTxItem } from '@helpers';
-import { StoreContext, useAssets, useRates, useSettings } from '@services';
+import { makeTxConfigFromTx, makeTxItem } from '@helpers';
+import { useAssets, useNetworks, useRates, useSettings } from '@services';
+import { getAccountsAssets, useSelector } from '@store';
 import { translateRaw } from '@translations';
 import { ITxType, StoreAccount, TxParcel } from '@types';
 
@@ -25,32 +24,38 @@ export default function SwapTransactionReceipt({
   assetPair,
   transactions,
   account,
-  onSuccess
+  onSuccess,
+  ...props
 }: Props) {
-  const { assets: getAssets } = useContext(StoreContext);
-  const { getAssetByUUID } = useAssets();
+  const { getAssetByUUID, assets } = useAssets();
   const { settings } = useSettings();
   const { getAssetRate } = useRates();
+  const { getNetworkById } = useNetworks();
   const swapDisplay: SwapDisplayData = pick(
     ['fromAsset', 'toAsset', 'fromAmount', 'toAmount'],
     assetPair
   );
-  const currentAssets = getAssets();
+  const currentAssets = useSelector(getAccountsAssets);
   // @todo: refactor this to be based on status of tx from StoreProvider
   const txItems = transactions.map((tx, idx) => {
-    const txConfig = makeSwapTxConfig(currentAssets)(
-      tx.txRaw,
-      account,
-      assetPair.fromAsset,
-      assetPair.fromAmount.toString()
-    );
     const txType = idx === transactions.length - 1 ? ITxType.SWAP : ITxType.APPROVAL;
+    const txConfig =
+      txType === ITxType.SWAP
+        ? makeSwapTxConfig(currentAssets)(
+            tx.txRaw,
+            account,
+            assetPair.fromAsset,
+            assetPair.fromAmount.toString()
+          )
+        : makeTxConfigFromTx(tx.txRaw, assets, account.network, [account]);
     return makeTxItem(txType, txConfig, tx.txHash!, tx.txReceipt);
   });
 
   const txReceipts = txItems.map(({ txReceipt }) => txReceipt);
 
-  const baseAsset = getAssetByUUID(txItems[0].txConfig.network.baseAsset)!;
+  const network = getNetworkById(txItems[0].txConfig.networkId);
+
+  const baseAsset = getAssetByUUID(network.baseAsset)!;
 
   const baseAssetRate = getAssetRate(baseAsset);
 
@@ -76,6 +81,7 @@ export default function SwapTransactionReceipt({
       resetFlow={onSuccess}
       onComplete={onSuccess}
       customComponent={customComponent}
+      {...props}
     />
   ) : (
     <MultiTxReceipt

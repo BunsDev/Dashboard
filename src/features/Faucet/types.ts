@@ -5,7 +5,8 @@ export interface ITxFaucetResult {
   data: ITxData;
   from: TAddress;
   gasLimit: ITxGasLimit;
-  gasPrice: ITxGasPrice;
+  maxFeePerGas: ITxGasPrice;
+  maxPriorityFeePerGas: ITxGasPrice;
   hash: ITxHash;
   network: string;
   nonce: number;

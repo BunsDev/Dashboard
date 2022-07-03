@@ -1,5 +1,3 @@
-import React from 'react';
-
 import { Typography } from '@mycrypto/ui';
 import styled from 'styled-components';
 
@@ -16,6 +14,7 @@ import {
   Tooltip
 } from '@components';
 import { ROUTE_PATHS } from '@config';
+import { getIsMyCryptoMember, useSelector } from '@store';
 import { BREAK_POINTS, COLORS, FONT_SIZE, SPACING } from '@theme';
 import translate, { Trans, translateRaw } from '@translations';
 import { StoreAsset } from '@types';
@@ -63,11 +62,11 @@ const MoreIcon = styled(Icon)`
   cursor: pointer;
 `;
 
-const TokenDashboardPanel = styled(DashboardPanel)`
-  max-height: 740px;
+const TokenDashboardPanel = styled(DashboardPanel)<{ isMyCryptoMember: boolean }>`
+  max-height: 866px;
   @media (min-width: ${BREAK_POINTS.SCREEN_SM}) {
     min-height: 430px;
-    height: 652px;
+    height: ${(props) => (props.isMyCryptoMember ? '660px' : '866px')};
   }
 `;
 
@@ -92,8 +91,10 @@ export function TokenList(props: TokenListProps) {
     handleScanTokens
   } = props;
   const sortedTokens = tokens.sort((a, b) => a.name.localeCompare(b.name));
+  const isMyCryptoMember = useSelector(getIsMyCryptoMember);
   return (
     <TokenDashboardPanel
+      isMyCryptoMember={isMyCryptoMember}
       heading={
         <>
           {translateRaw('TOKENS')}{' '}
@@ -104,7 +105,7 @@ export function TokenList(props: TokenListProps) {
         <Box variant="rowAlign">
           <LinkApp href="#" variant="opacityLink" onClick={() => handleScanTokens()}>
             <Box variant="rowAlign" mr={SPACING.BASE}>
-              <Icon type="refresh" width="1em" />
+              <Icon type="refresh" width="1em" color="BLUE_BRIGHT" />
               <Text ml={SPACING.XS} mb={0}>
                 {translateRaw('SCAN_TOKENS_SHORT')}
               </Text>
@@ -140,6 +141,7 @@ export function TokenList(props: TokenListProps) {
                     <TokenValue>${convertToFiatFromAsset(token, token.rate)}</TokenValue>
                   )}
                   <MoreIcon
+                    color="BLUE_DARK_SLATE"
                     type="more"
                     height="24px"
                     alt="More"

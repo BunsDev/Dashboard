@@ -1,7 +1,6 @@
-import React, { useContext } from 'react';
-
 import { Text } from '@components/NewTypography';
-import { getAccountsByAsset, StoreContext, useAssets } from '@services';
+import { getAccountsByAsset, useAssets } from '@services';
+import { getStoreAccounts, useSelector } from '@store';
 import { translateRaw } from '@translations';
 import { Asset, TUuid } from '@types';
 
@@ -10,10 +9,10 @@ interface MigrationSubHeadProps {
 }
 
 export const MigrationSubHead = ({ assetUuid }: MigrationSubHeadProps) => {
-  const { accounts } = useContext(StoreContext);
+  const accounts = useSelector(getStoreAccounts);
   const { getAssetByUUID } = useAssets();
 
-  const asset = (getAssetByUUID(assetUuid) || {}) as Asset;
+  const asset = (getAssetByUUID(assetUuid) ?? {}) as Asset;
   const relevantAccounts = getAccountsByAsset(accounts, asset);
 
   return (

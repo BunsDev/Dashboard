@@ -55,22 +55,14 @@ export function validateAmountField(): TestOptions {
 
 export const canAffordTX = (
   baseAsset: Asset,
-  {
-    account,
-    asset,
-    advancedTransaction,
-    gasPriceField,
-    gasPriceSlider,
-    gasLimitField,
-    amount
-  }: IFormikFields
+  { account, asset, gasLimitField, amount }: IFormikFields,
+  gasPrice: string
 ) => {
-  const gasPrice = advancedTransaction ? gasPriceField : gasPriceSlider;
   const gasLimit = gasLimitField;
   const gasTotal = bigify(gasStringsToMaxGasBN(gasPrice, gasLimit).toString());
   const total =
     asset.type === 'base'
-      ? gasTotal.plus(bigify(toWei(amount, baseAsset.decimal || DEFAULT_ASSET_DECIMAL).toString()))
+      ? gasTotal.plus(bigify(toWei(amount, baseAsset.decimal ?? DEFAULT_ASSET_DECIMAL).toString()))
       : gasTotal;
   const storeBaseAsset = account.assets && account.assets.find((a) => a.uuid === baseAsset.uuid);
   return storeBaseAsset ? total.lte(bigify(storeBaseAsset.balance)) : false;

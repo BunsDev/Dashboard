@@ -1,75 +1,19 @@
-import React, { useState } from 'react';
+import { LEDGER_DERIVATION_PATHS } from '@mycrypto/wallets';
 
 import { LinkApp } from '@components';
-import HardwareWalletUI from '@components/WalletUnlock/Hardware';
-import {
-  DEFAULT_GAP_TO_SCAN_FOR,
-  DEFAULT_NUM_OF_ACCOUNTS_TO_SCAN,
-  DPathsList,
-  LEDGER_DERIVATION_PATHS
-} from '@config';
-import {
-  getAssetByUUID,
-  getDPaths,
-  getNetworkById,
-  useAssets,
-  useDeterministicWallet,
-  useNetworks
-} from '@services';
-import { Trans, translateRaw } from '@translations';
-import { ExtendedAsset, FormData, WalletId } from '@types';
-import { prop, uniqBy } from '@vendor';
+import { ETHEREUM_NETWORKS } from '@config';
+import { Trans } from '@translations';
+import { FormData, WalletId } from '@types';
 
-import DeterministicWallet from './DeterministicWallet';
-import UnsupportedNetwork from './UnsupportedNetwork';
+import { Hardware } from './Hardware';
 
 interface OwnProps {
   formData: FormData;
   onUnlock(param: any): void;
 }
 
-// const WalletService = WalletFactory(WalletId.LEDGER_NANO_S);
-
-const LedgerDecrypt = ({ formData, onUnlock }: OwnProps) => {
-  const { networks } = useNetworks();
-  const { assets } = useAssets();
-  const network = getNetworkById(formData.network, networks);
-
-  // @todo: LEDGER_DERIVATION_PATHS are not available on all networks. Fix this to only display DPaths relevant to the specified network.
-  const dpaths = uniqBy(prop('value'), [
-    ...getDPaths([network], WalletId.LEDGER_NANO_S),
-    ...LEDGER_DERIVATION_PATHS
-  ]);
-  const defaultDPath = network.dPaths[WalletId.LEDGER_NANO_S] || DPathsList.ETH_LEDGER;
-  const numOfAccountsToCheck = DEFAULT_NUM_OF_ACCOUNTS_TO_SCAN;
-  const extendedDPaths = dpaths.map((dpath) => ({
-    ...dpath,
-    offset: 0,
-    numOfAddresses: numOfAccountsToCheck
-  }));
-  const baseAsset = getAssetByUUID(assets)(network.baseAsset) as ExtendedAsset;
-  const [assetToUse, setAssetToUse] = useState(baseAsset);
-  const {
-    state,
-    requestConnection,
-    updateAsset,
-    addDPaths,
-    generateFreshAddress
-  } = useDeterministicWallet(extendedDPaths, WalletId.LEDGER_NANO_S_NEW, DEFAULT_GAP_TO_SCAN_FOR);
-
-  const handleAssetUpdate = (newAsset: ExtendedAsset) => {
-    setAssetToUse(newAsset);
-    updateAsset(newAsset);
-  };
-
-  const handleNullConnect = () => {
-    requestConnection(network, assetToUse);
-  };
-
-  if (!network) {
-    // @todo: make this better.
-    return <UnsupportedNetwork walletType={translateRaw('X_LEDGER')} network={network} />;
-  }
+export const Ledger = ({ formData, onUnlock }: OwnProps) => {
+  const extraDPaths = ETHEREUM_NETWORKS.includes(formData.network) ? LEDGER_DERIVATION_PATHS : [];
 
   if (window.location.protocol !== 'https:') {
     return (
@@ -90,31 +34,12 @@ const LedgerDecrypt = ({ formData, onUnlock }: OwnProps) => {
     );
   }
 
-  if (state.isConnected && state.asset && (state.queuedAccounts || state.finishedAccounts)) {
-    return (
-      <DeterministicWallet
-        state={state}
-        defaultDPath={defaultDPath}
-        assets={assets}
-        assetToUse={assetToUse}
-        network={network}
-        updateAsset={updateAsset}
-        addDPaths={addDPaths}
-        generateFreshAddress={generateFreshAddress}
-        handleAssetUpdate={handleAssetUpdate}
-        onUnlock={onUnlock}
-      />
-    );
-  } else {
-    return (
-      <HardwareWalletUI
-        network={network}
-        state={state}
-        handleNullConnect={handleNullConnect}
-        walletId={WalletId.LEDGER_NANO_S_NEW}
-      />
-    );
-  }
+  return (
+    <Hardware
+      formData={formData}
+      onUnlock={onUnlock}
+      wallet={WalletId.LEDGER_NANO_S_NEW}
+      extraDPaths={extraDPaths}
+    />
+  );
 };
-
-export default LedgerDecrypt;

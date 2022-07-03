@@ -1,10 +1,7 @@
-import React from 'react';
-
 import { Context as ResponsiveContext } from 'react-responsive';
 import { mockAppState, simpleRender } from 'test-utils';
 
 import { fAccounts, fAssets, fContacts, fNetworks, fSettings } from '@fixtures';
-import { StoreProvider } from '@services';
 import { translateRaw } from '@translations';
 
 import Settings from './Settings';
@@ -12,9 +9,7 @@ import Settings from './Settings';
 function getComponent() {
   return simpleRender(
     <ResponsiveContext.Provider value={{ width: 900 }}>
-      <StoreProvider>
-        <Settings />
-      </StoreProvider>
+      <Settings />
     </ResponsiveContext.Provider>,
     {
       initialState: mockAppState({

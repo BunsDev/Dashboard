@@ -1,65 +1,62 @@
-import BigNumber from 'bignumber.js';
+import { DeterministicWallet, DerivationPath as DPath } from '@mycrypto/wallets';
 import { ValuesType } from 'utility-types';
 
-import { DPath, ExtendedAsset, Network, TAddress, WalletId } from '@types';
-
-import { Wallet } from '..';
-import DeterministicWalletReducer from './reducer';
+import { HDWalletErrors } from '@features/AddAccount/components/hdWallet.slice';
+import { ExtendedAsset, Network, TAddress, WalletId } from '@types';
 
 export interface TDWActionError {
-  code: ValuesType<typeof DeterministicWalletReducer.errorCodes>;
+  code: ValuesType<typeof HDWalletErrors>;
   message: string;
 }
 
 export interface DWAccountDisplay {
   address: TAddress;
   pathItem: {
-    baseDPath: DPath;
+    baseDPath: ExtendedDPath;
     path: string;
     index: number;
   };
-  balance: BigNumber | undefined;
+  balance?: string;
   isFreshAddress?: boolean;
 }
 
-export interface ExtendedDPath extends DPath {
+export type ExtendedDPath = DPath & {
   offset: number;
   numOfAddresses: number;
-}
+};
 
-export interface DeterministicWalletState {
+export interface HDWalletState {
+  session?: DeterministicWallet;
   isInit: boolean;
   isConnected: boolean;
   isConnecting: boolean;
   isGettingAccounts: boolean;
-  detectedChainId?: number | undefined;
   asset?: ExtendedAsset;
-  queuedAccounts: DWAccountDisplay[];
-  finishedAccounts: DWAccountDisplay[];
+  network?: Network;
+  accountQueue: DWAccountDisplay[];
+  scannedAccounts: DWAccountDisplay[];
   customDPaths: ExtendedDPath[];
-  session: Wallet | undefined;
-  promptConnectionRetry: boolean;
-  completed: boolean;
+  isCompleted: boolean;
   error?: TDWActionError;
 }
 
-export interface IUseDeterministicWallet {
-  state: DeterministicWalletState;
+export interface IUseHDWallet {
+  connectionError?: TDWActionError;
+  selectedAsset?: ExtendedAsset;
+  isCompleted: boolean;
+  isConnected: boolean;
+  isConnecting: boolean;
+  accountQueue: DWAccountDisplay[];
+  scannedAccounts: DWAccountDisplay[];
+  mergedDPaths: ExtendedDPath[];
   requestConnection(network: Network, asset: ExtendedAsset): void;
   updateAsset(asset: ExtendedAsset): void;
   addDPaths(dpaths: ExtendedDPath[]): void;
-  generateFreshAddress(defaultDPath: ExtendedDPath): boolean;
+  scanMoreAddresses(dpath: ExtendedDPath): void;
 }
 
 export interface HardwareInitProps {
   walletId: WalletId;
   asset: ExtendedAsset;
   dpath: DPath;
-}
-
-export interface IDeterministicWalletService {
-  init(props: HardwareInitProps): void;
-  getAccounts(session: Wallet, dpath: ExtendedDPath[]): void;
-  handleAccountsQueue(accounts: DWAccountDisplay[], network: Network, asset: ExtendedAsset): void;
-  triggerComplete(): void;
 }

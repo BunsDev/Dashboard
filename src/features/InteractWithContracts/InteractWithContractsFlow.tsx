@@ -1,11 +1,12 @@
-import React, { useContext, useState } from 'react';
+import { useState } from 'react';
 
 import { useHistory, useLocation } from 'react-router-dom';
 import styled from 'styled-components';
 
 import { ExtendedContentPanel, Tabs, WALLET_STEPS } from '@components';
 import { DEFAULT_NETWORK, ROUTE_PATHS } from '@config';
-import { getNetworkById, StoreContext, useNetworks } from '@services/Store';
+import { getNetworkById, useNetworks } from '@services/Store';
+import { getDefaultAccount, useSelector } from '@store';
 import { BREAK_POINTS } from '@theme';
 import { translateRaw } from '@translations';
 import { ISignedTx, ITxReceipt, Tab } from '@types';
@@ -49,9 +50,8 @@ const TabsWrapper = styled.div`
 
 const InteractWithContractsFlow = () => {
   const [step, setStep] = useState(0);
-  const { getDefaultAccount } = useContext(StoreContext);
   const { networks } = useNetworks();
-  const defaultAccount = getDefaultAccount();
+  const defaultAccount = useSelector(getDefaultAccount());
   const initialState = {
     ...interactWithContractsInitialState,
     account: defaultAccount,
@@ -73,6 +73,8 @@ const InteractWithContractsFlow = () => {
     handleTxSigned,
     handleSaveContractSubmit,
     handleGasSelectorChange,
+    handleGasLimitChange,
+    handleNonceChange,
     handleDeleteContract
   } = useStateReducer(InteractWithContractsFactory, initialState);
 
@@ -119,30 +121,7 @@ const InteractWithContractsFlow = () => {
     {
       title: translateRaw('NEW_HEADER_TEXT_14'),
       component: Interact,
-      props: (({
-        network,
-        contractAddress,
-        contract,
-        abi,
-        contracts,
-        showGeneratedForm,
-        customContractName,
-        rawTransaction,
-        addressOrDomainInput,
-        resolvingDomain
-      }) => ({
-        network,
-        contractAddress,
-        contract,
-        abi,
-        contracts,
-        showGeneratedForm,
-        account,
-        customContractName,
-        rawTransaction,
-        addressOrDomainInput,
-        resolvingDomain
-      }))(interactWithContractsState),
+      props: interactWithContractsState,
       actions: {
         handleNetworkSelected,
         handleContractSelected,
@@ -158,7 +137,9 @@ const InteractWithContractsFlow = () => {
           handleInteractionFormWriteSubmit(payload, goToNextStep),
         handleAccountSelected,
         handleGasSelectorChange,
-        handleDeleteContract
+        handleDeleteContract,
+        handleGasLimitChange,
+        handleNonceChange
       }
     },
     {
@@ -170,10 +151,10 @@ const InteractWithContractsFlow = () => {
     {
       title: translateRaw('INTERACT_SIGN_WRITE'),
       component: account && WALLET_STEPS[account.wallet],
-      props: (({ rawTransaction }) => ({
+      props: (({ txConfig }) => ({
         network: account && account.network,
         senderAccount: account,
-        rawTransaction
+        rawTransaction: txConfig?.rawTransaction
       }))(interactWithContractsState),
       actions: {
         onSuccess: (payload: ITxReceipt | ISignedTx) => handleTxSigned(payload, goToNextStep)

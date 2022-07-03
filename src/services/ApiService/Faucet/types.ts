@@ -22,7 +22,8 @@ export interface FaucetSolvedChallengeResponse {
     data: string;
     from: string;
     gasLimit: string;
-    gasPrice: string;
+    maxFeePerGas: string;
+    maxPriorityFeePerGas: string;
     hash: string;
     network: string;
     nonce: number;

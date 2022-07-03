@@ -1,4 +1,4 @@
-import React, { Dispatch, SetStateAction, useState } from 'react';
+import { ComponentProps, Dispatch, Fragment, SetStateAction, useState } from 'react';
 
 import styled from 'styled-components';
 
@@ -183,15 +183,8 @@ export default function BalanceDetailsTable({
   const ACCOUNTS = translateRaw('WALLET_BREAKDOWN_ACCOUNTS');
   const BALANCE = translateRaw('WALLET_BREAKDOWN_BALANCE');
   const VALUE = translateRaw('WALLET_BREAKDOWN_VALUE');
-  const tableProps: React.ComponentProps<typeof FixedSizeCollapsibleTable> = {
-    head: [
-      TOKEN,
-      ACCOUNTS,
-      BALANCE,
-      VALUE,
-      <React.Fragment key={'HIDE'} />,
-      <React.Fragment key={'EXPAND'} />
-    ],
+  const tableProps: ComponentProps<typeof FixedSizeCollapsibleTable> = {
+    head: [TOKEN, ACCOUNTS, BALANCE, VALUE, <Fragment key={'HIDE'} />, <Fragment key={'EXPAND'} />],
     body: balances.map((balance) => {
       return createBalancesDetailViewRow(
         balance,
@@ -223,7 +216,7 @@ export default function BalanceDetailsTable({
           </BalancesDetailViewTableRow>
 
           {balanceRow.accounts?.map((acc, index) => {
-            const isLastItem = index + 1 >= (balanceRow.accounts?.length || -1);
+            const isLastItem = index + 1 >= (balanceRow.accounts?.length ?? -1);
             return (
               <BalancesDetailViewTableRow
                 key={index}

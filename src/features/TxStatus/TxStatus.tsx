@@ -1,4 +1,4 @@
-import React, { useContext, useEffect, useReducer } from 'react';
+import { useEffect, useReducer } from 'react';
 
 import { isHexString } from '@ethersproject/bytes';
 import { Input } from '@mycrypto/ui';
@@ -15,7 +15,8 @@ import {
   TxReceipt
 } from '@components';
 import { DEFAULT_NETWORK, ROUTE_PATHS } from '@config';
-import { StoreContext, useAssets, useNetworks, useTxHistory } from '@services';
+import { useAssets, useNetworks } from '@services';
+import { getMergedTxHistory, getStoreAccounts, useSelector } from '@store';
 import { COLORS, SPACING } from '@theme';
 import { translateRaw } from '@translations';
 import { ITxReceipt } from '@types';
@@ -51,8 +52,8 @@ const TxStatus = ({ history, location }: RouteComponentProps) => {
 
   const { assets } = useAssets();
   const { networks } = useNetworks();
-  const { accounts } = useContext(StoreContext);
-  const { txHistory } = useTxHistory();
+  const accounts = useSelector(getStoreAccounts);
+  const txHistory = useSelector(getMergedTxHistory);
 
   const defaultTxHash = qs.hash ? qs.hash : '';
   const defaultNetwork = qs.network ? qs.network : DEFAULT_NETWORK;
@@ -104,7 +105,7 @@ const TxStatus = ({ history, location }: RouteComponentProps) => {
 
   return (
     <ContentPanel heading={translateRaw('TX_STATUS')}>
-      <Wrapper fullPageLoading={fullPageLoading || false}>
+      <Wrapper fullPageLoading={fullPageLoading ?? false}>
         {!tx && !fromLink && (
           <>
             <NetworkSelector
@@ -144,7 +145,7 @@ const TxStatus = ({ history, location }: RouteComponentProps) => {
               resetFlow={noOp}
               onComplete={noOp}
               disableDynamicTxReceiptDisplay={true}
-              disableAddTxToAccount={true}
+              disablePendingState={true}
             />
             <SButton onClick={clearForm} fullwidth={true} colorScheme={'inverted'}>
               {translateRaw('TX_STATUS_GO_BACK')}

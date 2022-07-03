@@ -1,7 +1,7 @@
 import { call } from 'redux-saga-test-plan/matchers';
 import { expectSaga, mockAppState } from 'test-utils';
 
-import { fAssets } from '@fixtures';
+import { fAccounts, fAssets, fContacts, fNetworks } from '@fixtures';
 import { MyCryptoApiService } from '@services';
 import { ExtendedAsset } from '@types';
 import { arrayToObj } from '@utils';
@@ -72,6 +72,11 @@ describe('AccountSlice', () => {
     expect(actual).toEqual(expected);
   });
 
+  it('addFromAPI(): sets state to payload', () => {
+    const actual = reducer([], addAssetsFromAPI(fAssets));
+    expect(actual).toEqual(fAssets);
+  });
+
   it('reset(): can reset', () => {
     const entity = { uuid: 'random', contractAddress: '0x0' } as ExtendedAsset;
     const state = [entity];
@@ -87,12 +92,54 @@ describe('AccountSlice', () => {
 });
 
 describe('fetchAssetsWorker()', () => {
-  it('calls getAssets and puts result', () => {
-    const assets = arrayToObj('uuid')(fAssets);
+  it('calls getAssets, merges assets and puts result', () => {
+    const a1 = fAssets[10];
+    const a2 = fAssets[11];
+    const a3 = {
+      ...fAssets[2],
+      isCustom: true
+    };
+    const a4 = fAssets[0];
+    const state = [a1, a2, a3, a4];
+    const modifiedEntities = [{ ...a2, contractAddress: '0xchanged1' }];
+    const expected = [a1, a3, a4, modifiedEntities[0]];
+    const apiResult = arrayToObj('uuid')(modifiedEntities);
     return expectSaga(fetchAssetsWorker)
-      .provide([[call.fn(MyCryptoApiService.instance.getAssets), assets]])
+      .withState(
+        mockAppState({
+          assets: state,
+          accounts: fAccounts,
+          addressBook: fContacts,
+          networks: fNetworks
+        })
+      )
+      .provide([[call.fn(MyCryptoApiService.instance.getAssets), apiResult]])
       .call(MyCryptoApiService.instance.getAssets)
-      .put(addAssetsFromAPI(assets))
+      .put(addAssetsFromAPI(expected))
+      .silentRun();
+  });
+
+  it('keeps base assets around', () => {
+    const a1 = fAssets[10];
+    const a2 = fAssets[11];
+    const a3 = fAssets[2];
+    const a4 = fAssets[0];
+    const state = [a1, a2, a3, a4];
+    const modifiedEntities = [{ ...a2, contractAddress: '0xchanged1' }];
+    const expected = [a1, a3, a4, modifiedEntities[0]];
+    const apiResult = arrayToObj('uuid')(modifiedEntities);
+    return expectSaga(fetchAssetsWorker)
+      .withState(
+        mockAppState({
+          assets: state,
+          accounts: fAccounts,
+          addressBook: fContacts,
+          networks: fNetworks
+        })
+      )
+      .provide([[call.fn(MyCryptoApiService.instance.getAssets), apiResult]])
+      .call(MyCryptoApiService.instance.getAssets)
+      .put(addAssetsFromAPI(expected))
       .silentRun();
   });
 });

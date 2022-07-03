@@ -3,7 +3,7 @@
   In order to style the headers particularyly the Icon caret
 */
 
-import React, { Component, ReactNode } from 'react';
+import { Component, FC, Fragment, ReactNode } from 'react';
 
 import styled from 'styled-components';
 
@@ -39,7 +39,7 @@ export interface TableContent {
 
 export interface TableData extends TableContent {
   head: (string | JSX.Element)[];
-  overlay?: React.FC<{ indexKey: number | string }>;
+  overlay?: FC<{ indexKey: number | string }>;
   overlayRows?: (number | string)[];
   config?: TableConfig;
 }
@@ -159,13 +159,13 @@ export const getSortedRows = (
   const { sortFunction = defaultColumnSort } = config;
   // Determine which column to order.
   const headerColumns = getHeaderColumns(head);
-  const sortableColumnIndex = Math.max(headerColumns.indexOf(currentSortColumn || ''), 0);
+  const sortableColumnIndex = Math.max(headerColumns.indexOf(currentSortColumn ?? ''), 0);
   // Create an array containing the data from each row in the specified column.
   const sortableColumnEntries = body
     .map((row) => row[sortableColumnIndex])
     .map((entry) =>
       // If the entry is a string, wrap it.
-      typeof entry === 'string' ? <React.Fragment>{entry}</React.Fragment> : entry
+      typeof entry === 'string' ? <Fragment>{entry}</Fragment> : entry
     );
   // Rearrange that array based on the selected sort.
   const sortedColumnEntries = [...sortableColumnEntries].sort(sortFunction(currentSortColumn));
@@ -205,7 +205,7 @@ class AbstractTable extends Component<Props, State> {
   public render() {
     const { head, config, overlay, overlayRows, ...rest } = this.props;
     const { collapsedGroups, sortedColumnDirection } = this.state;
-    const { overlayRoot } = config || { overlayRoot: false };
+    const { overlayRoot } = config ?? { overlayRoot: false };
     const { body, groups } = this.getSortedLayout();
 
     const Overlay = overlay;
@@ -279,9 +279,9 @@ class AbstractTable extends Component<Props, State> {
 
             if (Overlay && primaryRowKey && overlayRows!.includes(primaryRowKey)) {
               return (
-                <React.Fragment key={rowIndex}>
+                <Fragment key={rowIndex}>
                   <Overlay indexKey={primaryRowKey} />
-                </React.Fragment>
+                </Fragment>
               );
             }
 
@@ -308,7 +308,7 @@ class AbstractTable extends Component<Props, State> {
             );
           })}
           {groups!.map(({ title, entries }) => (
-            <React.Fragment key={title}>
+            <Fragment key={title}>
               <TableGroupHead onClick={this.toggleCollapseGroup.bind(this, title)} role="button">
                 <TableHeading colSpan={head.length} style={{ paddingLeft: SPACING.BASE }}>
                   <Box variant="rowAlign">
@@ -335,7 +335,7 @@ class AbstractTable extends Component<Props, State> {
                     ))}
                   </TableRow>
                 ))}
-            </React.Fragment>
+            </Fragment>
           ))}
         </tbody>
       </table>
@@ -345,7 +345,7 @@ class AbstractTable extends Component<Props, State> {
   private readonly getCurrentColumnSortable = () => {
     const { currentSortColumn } = this.state;
     const { config } = this.props;
-    const { sortableColumn } = config || {};
+    const { sortableColumn } = config ?? {};
 
     if (currentSortColumn) {
       return currentSortColumn;
@@ -360,7 +360,7 @@ class AbstractTable extends Component<Props, State> {
 
   private readonly isColumnSortable = (column: string) => {
     const { config } = this.props;
-    const { sortableColumn } = config || {};
+    const { sortableColumn } = config ?? {};
 
     if (Array.isArray(sortableColumn)) {
       return sortableColumn.some((c) => c.includes(column));

@@ -1,8 +1,9 @@
-import React, { lazy } from 'react';
+import { lazy } from 'react';
 
 import { Redirect } from 'react-router-dom';
 
 import { ROUTE_PATHS } from '@config';
+import NftDashboard from '@features/NFT/NFTDashboard';
 import { FeatureFlags } from '@services/FeatureFlag';
 import { IAppRoute } from '@types';
 import { isTruthy } from '@utils';
@@ -27,14 +28,6 @@ const Export = lazy(() =>
 );
 const DownloadApp = lazy(() =>
   import(/* webpackChunkName: "DownloadApp" */ '@features/DownloadApp/DownloadApp')
-);
-const ScreenLockLocked = lazy(() =>
-  import(/* webpackChunkName: "ScreenLockLocked" */ '@features/ScreenLock/ScreenLockLocked')
-);
-const ScreenLockForgotPassword = lazy(() =>
-  import(
-    /* webpackChunkName: "ScreenLockForgotPassword" */ '@features/ScreenLock/ScreenLockForgotPassword'
-  )
 );
 const RequestAssets = lazy(() =>
   import(/* webpackChunkName: "RequestAssets" */ '@features/RequestAssets/RequestAssets')
@@ -85,21 +78,10 @@ const TxStatus = lazy(() =>
   import(/* webpackChunkName: "TxStatus" */ '@features/TxStatus/TxStatus')
 );
 
-const RepTokenMigration = lazy(() =>
-  import(/* webpackChunkName: "TokenMigration" */ '@features/RepTokenMigration')
-);
-
-const AaveTokenMigration = lazy(() =>
-  import(/* webpackChunkName: "TokenMigration" */ '@features/AaveTokenMigration')
-);
-
-const AntTokenMigration = lazy(() =>
-  import(/* webpackChunkName: "TokenMigration" */ '@features/AntTokenMigration')
-);
 const Faucet = lazy(() => import(/* webpackChunkName: "Faucet" */ '@features/Faucet'));
 
-const GolemTokenMigration = lazy(() =>
-  import(/* webpackChunkName: "TokenMigration" */ '@features/GolemTokenMigration')
+const Migrations = lazy(() =>
+  import(/* webpackChunkName: "TokenMigration" */ '@features/TokenMigration')
 );
 
 export interface IAppRoutes {
@@ -135,22 +117,6 @@ export const getStaticAppRoutes = (featureFlags: FeatureFlags): IAppRoute[] => [
     component: DownloadAppRedirect
   },
   {
-    name: ROUTE_PATHS.CREATE_WALLET_MNEMONIC.name,
-    title: ROUTE_PATHS.CREATE_WALLET_MNEMONIC.title,
-    path: ROUTE_PATHS.CREATE_WALLET_MNEMONIC.path,
-    enabled: isTruthy(featureFlags.CREATE_WALLET),
-    exact: true,
-    component: DownloadAppRedirect
-  },
-  {
-    name: ROUTE_PATHS.CREATE_WALLET_KEYSTORE.name,
-    title: ROUTE_PATHS.CREATE_WALLET_KEYSTORE.title,
-    path: ROUTE_PATHS.CREATE_WALLET_KEYSTORE.path,
-    enabled: isTruthy(featureFlags.CREATE_WALLET),
-    exact: true,
-    component: DownloadAppRedirect
-  },
-  {
     name: ROUTE_PATHS.DOWNLOAD_DESKTOP_APP.name,
     title: ROUTE_PATHS.DOWNLOAD_DESKTOP_APP.title,
     path: ROUTE_PATHS.DOWNLOAD_DESKTOP_APP.path,
@@ -166,22 +132,6 @@ export const getStaticAppRoutes = (featureFlags: FeatureFlags): IAppRoute[] => [
     exact: true,
     requireAccounts: true,
     component: RequestAssets
-  },
-  {
-    name: ROUTE_PATHS.SCREEN_LOCK_LOCKED.name,
-    title: ROUTE_PATHS.SCREEN_LOCK_LOCKED.title,
-    path: ROUTE_PATHS.SCREEN_LOCK_LOCKED.path,
-    enabled: isTruthy(featureFlags.SCREEN_LOCK),
-    exact: true,
-    component: ScreenLockLocked
-  },
-  {
-    name: ROUTE_PATHS.SCREEN_LOCK_FORGOT.name,
-    title: ROUTE_PATHS.SCREEN_LOCK_FORGOT.title,
-    path: ROUTE_PATHS.SCREEN_LOCK_FORGOT.path,
-    enabled: isTruthy(featureFlags.SCREEN_LOCK),
-    exact: true,
-    component: ScreenLockForgotPassword
   },
   {
     name: ROUTE_PATHS.SEND.name,
@@ -316,40 +266,13 @@ export const getStaticAppRoutes = (featureFlags: FeatureFlags): IAppRoute[] => [
     component: TxStatus
   },
   {
-    name: ROUTE_PATHS.REP_TOKEN_MIGRATION.name,
-    title: ROUTE_PATHS.REP_TOKEN_MIGRATION.title,
-    path: ROUTE_PATHS.REP_TOKEN_MIGRATION.path,
+    name: ROUTE_PATHS.TOKEN_MIGRATION.name,
+    title: ROUTE_PATHS.TOKEN_MIGRATION.title,
+    path: ROUTE_PATHS.TOKEN_MIGRATION.path,
     exact: true,
     requireAccounts: true,
-    enabled: isTruthy(featureFlags.REP_TOKEN_MIGRATION),
-    component: RepTokenMigration
-  },
-  {
-    name: ROUTE_PATHS.AAVE_TOKEN_MIGRATION.name,
-    title: ROUTE_PATHS.AAVE_TOKEN_MIGRATION.title,
-    path: ROUTE_PATHS.AAVE_TOKEN_MIGRATION.path,
-    exact: true,
-    requireAccounts: true,
-    enabled: isTruthy(featureFlags.AAVE_TOKEN_MIGRATION),
-    component: AaveTokenMigration
-  },
-  {
-    name: ROUTE_PATHS.ANT_TOKEN_MIGRATION.name,
-    title: ROUTE_PATHS.ANT_TOKEN_MIGRATION.title,
-    path: ROUTE_PATHS.ANT_TOKEN_MIGRATION.path,
-    exact: true,
-    requireAccounts: true,
-    enabled: isTruthy(featureFlags.ANT_TOKEN_MIGRATION),
-    component: AntTokenMigration
-  },
-  {
-    name: ROUTE_PATHS.GOLEM_TOKEN_MIGRATION.name,
-    title: ROUTE_PATHS.GOLEM_TOKEN_MIGRATION.title,
-    path: ROUTE_PATHS.GOLEM_TOKEN_MIGRATION.path,
-    exact: true,
-    requireAccounts: true,
-    enabled: isTruthy(featureFlags.GOLEM_TOKEN_MIGRATION),
-    component: GolemTokenMigration
+    enabled: true,
+    component: Migrations
   },
   {
     name: ROUTE_PATHS.FAUCET.name,
@@ -359,6 +282,15 @@ export const getStaticAppRoutes = (featureFlags: FeatureFlags): IAppRoute[] => [
     requireAccounts: true,
     enabled: isTruthy(featureFlags.FAUCET),
     component: Faucet
+  },
+  {
+    name: ROUTE_PATHS.NFT_DASHBOARD.name,
+    title: ROUTE_PATHS.NFT_DASHBOARD.title,
+    path: ROUTE_PATHS.NFT_DASHBOARD.path,
+    exact: true,
+    requireAccounts: true,
+    enabled: true,
+    component: NftDashboard
   }
 ];
 

@@ -1,62 +1,69 @@
+import { GridPlusWallet, LedgerWallet, TrezorWallet } from '@mycrypto/wallets';
+
 import {
   HardwareWalletInitArgs,
-  HardwareWalletService,
   ViewOnlyWalletInitArgs,
   WalletConnectWalletInitArgs,
   WalletId,
-  WalletService,
   Web3WalletInitArgs
 } from '@types';
 
-import { ChainCodeResponse, LedgerWallet, TrezorWallet } from './deterministic';
 import { AddressOnlyWallet } from './non-deterministic';
 import { WalletConnectWallet } from './walletconnect';
 import { unlockWeb3 } from './web3';
 
+const trezorManifest = {
+  email: 'support@mycrypto.com',
+  appUrl: 'https://app.mycrypto.com'
+};
+
+const web3 = {
+  init: ({ networks }: Web3WalletInitArgs) => unlockWeb3(networks)
+};
+
+const ledger = {
+  init: ({ address, dPath, index, params }: HardwareWalletInitArgs) =>
+    getWallet(WalletId.LEDGER_NANO_S_NEW, params)!.getWallet(dPath, index, address)
+};
+
+const trezor = {
+  init: ({ address, dPath, index, params }: HardwareWalletInitArgs) =>
+    getWallet(WalletId.TREZOR_NEW, params)!.getWallet(dPath, index, address)
+};
+
 export const WalletFactory = {
-  [WalletId.WEB3]: {
-    init: ({ networks }: Web3WalletInitArgs) => unlockWeb3(networks)
-  } as WalletService,
-  [WalletId.METAMASK]: {
-    init: ({ networks }: Web3WalletInitArgs) => unlockWeb3(networks)
-  } as WalletService,
-  [WalletId.STATUS]: {
-    init: ({ networks }: Web3WalletInitArgs) => unlockWeb3(networks)
-  } as WalletService,
-  [WalletId.FRAME]: {
-    init: ({ networks }: Web3WalletInitArgs) => unlockWeb3(networks)
-  } as WalletService,
-  [WalletId.COINBASE]: {
-    init: ({ networks }: Web3WalletInitArgs) => unlockWeb3(networks)
-  } as WalletService,
-  [WalletId.TRUST]: {
-    init: ({ networks }: Web3WalletInitArgs) => unlockWeb3(networks)
-  } as WalletService,
-  [WalletId.LEDGER_NANO_S_NEW]: {
-    getChainCode: (dPath: string): Promise<ChainCodeResponse> => LedgerWallet.getChainCode(dPath),
-    init: ({ address, dPath, index }: HardwareWalletInitArgs) =>
-      new LedgerWallet(address, dPath, index)
-  } as HardwareWalletService,
-  [WalletId.LEDGER_NANO_S]: {
-    getChainCode: (dPath: string): Promise<ChainCodeResponse> => LedgerWallet.getChainCode(dPath),
-    init: ({ address, dPath, index }: HardwareWalletInitArgs) =>
-      new LedgerWallet(address, dPath, index)
-  } as HardwareWalletService,
-  [WalletId.TREZOR_NEW]: {
-    getChainCode: (dPath: string): Promise<ChainCodeResponse> => TrezorWallet.getChainCode(dPath),
-    init: ({ address, dPath, index }: HardwareWalletInitArgs) =>
-      new TrezorWallet(address, dPath, index)
-  } as HardwareWalletService,
-  [WalletId.TREZOR]: {
-    getChainCode: (dPath: string): Promise<ChainCodeResponse> => TrezorWallet.getChainCode(dPath),
-    init: ({ address, dPath, index }: HardwareWalletInitArgs) =>
-      new TrezorWallet(address, dPath, index)
-  } as HardwareWalletService,
+  [WalletId.WEB3]: web3,
+  [WalletId.METAMASK]: web3,
+  [WalletId.STATUS]: web3,
+  [WalletId.FRAME]: web3,
+  [WalletId.COINBASE]: web3,
+  [WalletId.TRUST]: web3,
+  [WalletId.LEDGER_NANO_S_NEW]: ledger,
+  [WalletId.LEDGER_NANO_S]: ledger,
+  [WalletId.TREZOR_NEW]: trezor,
+  [WalletId.TREZOR]: trezor,
+  [WalletId.GRIDPLUS]: {
+    init: ({ address, dPath, index, params }: HardwareWalletInitArgs) =>
+      getWallet(WalletId.GRIDPLUS, params)!.getWallet(dPath, index, address)
+  },
   [WalletId.VIEW_ONLY]: {
     init: ({ address }: ViewOnlyWalletInitArgs) => new AddressOnlyWallet(address)
-  } as WalletService,
+  },
   [WalletId.WALLETCONNECT]: {
-    init: ({ address, signMessageHandler }: WalletConnectWalletInitArgs) =>
-      new WalletConnectWallet(address, signMessageHandler)
-  } as WalletService
+    init: ({ address, signMessageHandler, killHandler }: WalletConnectWalletInitArgs) =>
+      new WalletConnectWallet(address, signMessageHandler, killHandler)
+  }
+};
+
+export const getWallet = (wallet: WalletId, params?: any) => {
+  switch (wallet) {
+    case WalletId.LEDGER_NANO_S_NEW:
+    case WalletId.LEDGER_NANO_S:
+      return new LedgerWallet();
+    case WalletId.TREZOR_NEW:
+    case WalletId.TREZOR:
+      return new TrezorWallet(trezorManifest);
+    case WalletId.GRIDPLUS:
+      return new GridPlusWallet({ name: 'MyCrypto', ...(params ?? {}) });
+  }
 };
